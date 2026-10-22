@@ -1,0 +1,128 @@
+# 定时把上游 optiscaler/OptiScaler 的更新合并进本 fork (h3xwave/OptiScaler)
+#
+# 默认行为：git merge upstream/master（能快进就快进，有本地提交则产生合并提交）
+# 手动触发时可勾选 hard_reset，让分支与上游完全一致（会丢弃 fork 独有的提交）
+name: Sync with Upstream
+
+on:
+  schedule:
+    # 每天 UTC 02:00 = 北京时间 10:00
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: '要同步的分支'
+        required: false
+        default: 'master'
+      hard_reset:
+        description: '强制与上游完全一致（丢弃 fork 独有提交，会 force push）'
+        type: boolean
+        default: false
+
+# 只允许写仓库内容，用于 push
+permissions:
+  contents: write
+
+# 同一时间只跑一个同步任务，避免并发冲突
+concurrency:
+  group: sync-upstream-${{ inputs.branch || 'master' }}
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: optiscaler/OptiScaler
+  TARGET_BRANCH: ${{ inputs.branch || 'master' }}
+
+jobs:
+  sync:
+    name: Merge upstream into fork
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.branch || 'master' }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add and fetch upstream
+        run: |
+          set -euo pipefail
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git" 2>/dev/null \
+            || git remote set-url upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --no-tags upstream "$TARGET_BRANCH"
+          echo "upstream/${TARGET_BRANCH} = $(git rev-parse "upstream/${TARGET_BRANCH}")"
+
+      - name: Sync branch
+        id: sync
+        env:
+          HARD_RESET: ${{ inputs.hard_reset || false }}
+        run: |
+          set -euo pipefail
+          UPSTREAM_REF="upstream/${TARGET_BRANCH}"
+
+          if [ "$HARD_RESET" = "true" ]; then
+            echo "模式：强制对齐上游（hard reset）"
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse "$UPSTREAM_REF")" ]; then
+              echo "已经是上游最新提交，无需操作。"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git reset --hard "$UPSTREAM_REF"
+            echo "changed=true"    >> "$GITHUB_OUTPUT"
+            echo "push_opts=--force-with-lease" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "模式：合并（merge）"
+          if git merge-base --is-ancestor "$UPSTREAM_REF" HEAD; then
+            echo "已包含上游全部提交，无需合并。"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! git merge --no-edit "$UPSTREAM_REF"; then
+            git merge --abort || true
+            echo "::error title=合并冲突::upstream/${TARGET_BRANCH} 与 ${TARGET_BRANCH} 存在冲突，需要手动解决后重新触发。"
+            exit 1
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "push_opts="    >> "$GITHUB_OUTPUT"
+
+      - name: Push to fork
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          PUSH_OPTS: ${{ steps.sync.outputs.push_opts }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if git push $PUSH_OPTS origin "HEAD:${TARGET_BRANCH}"; then
+              echo "已推送更新到 ${TARGET_BRANCH}"
+              exit 0
+            fi
+            echo "推送被拒绝，第 ${attempt} 次重试前先同步远端..."
+            git fetch origin "$TARGET_BRANCH"
+            git merge --no-edit "origin/${TARGET_BRANCH}" || { git merge --abort || true; exit 1; }
+            sleep 5
+          done
+          echo "::error title=推送失败::连续 3 次推送失败，请检查分支保护规则或仓库权限。"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## 上游同步结果"
+            echo ""
+            echo "- 上游仓库：\`${UPSTREAM_REPO}\`"
+            echo "- 目标分支：\`${TARGET_BRANCH}\`"
+            echo "- 是否有更新：\`${{ steps.sync.outputs.changed || 'false' }}\`"
+            echo "- 当前 HEAD：\`$(git rev-parse --short HEAD 2>/dev/null || echo unknown)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
