@@ -31,6 +31,11 @@ using TableSetupColumn_t = void (*)(const char* label, ImGuiTableColumnFlags fla
                                     ImGuiID user_id);
 using BeginCombo_t = bool (*)(const char* label, const char* preview_value, ImGuiComboFlags flags);
 using TextLinkOpenURL_t = void (*)(const char* label, const char* url);
+using CollapsingHeader_t = bool (*)(const char* label, ImGuiTreeNodeFlags flags);
+using SliderScalar_t = bool (*)(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min,
+                                const void* p_max, const char* format, ImGuiSliderFlags flags);
+using InputScalar_t = bool (*)(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step,
+                               const void* p_step_fast, const char* format, ImGuiInputTextFlags flags);
 
 TextUnformatted_t o_TextUnformatted = nullptr;
 SeparatorText_t o_SeparatorText = nullptr;
@@ -43,6 +48,9 @@ TreeNode_t o_TreeNode = nullptr;
 TableSetupColumn_t o_TableSetupColumn = nullptr;
 BeginCombo_t o_BeginCombo = nullptr;
 TextLinkOpenURL_t o_TextLinkOpenURL = nullptr;
+CollapsingHeader_t o_CollapsingHeader = nullptr;
+SliderScalar_t o_SliderScalar = nullptr;
+InputScalar_t o_InputScalar = nullptr;
 
 void hkTextUnformatted(const char* text, const char* text_end)
 {
@@ -109,6 +117,23 @@ bool hkBeginCombo(const char* label, const char* preview_value, ImGuiComboFlags 
 
 void hkTextLinkOpenURL(const char* label, const char* url) { o_TextLinkOpenURL(Tr::TranslateLabel(label), url); }
 
+bool hkCollapsingHeader(const char* label, ImGuiTreeNodeFlags flags)
+{
+    return o_CollapsingHeader(Tr::TranslateLabel(label), flags);
+}
+
+bool hkSliderScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max,
+                    const char* format, ImGuiSliderFlags flags)
+{
+    return o_SliderScalar(Tr::TranslateLabel(label), data_type, p_data, p_min, p_max, format, flags);
+}
+
+bool hkInputScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step,
+                   const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
+{
+    return o_InputScalar(Tr::TranslateLabel(label), data_type, p_data, p_step, p_step_fast, format, flags);
+}
+
 // Each hook gets its own transaction so that a single failure (a function too small
 // for a trampoline, for instance) cannot take the remaining hooks down with it.
 template <typename T> bool AttachOne(T& original, PVOID hook, const char* name)
@@ -152,8 +177,11 @@ void Tr::InstallImGuiHooks()
     o_TableSetupColumn = ImGui::TableSetupColumn;
     o_BeginCombo = ImGui::BeginCombo;
     o_TextLinkOpenURL = ImGui::TextLinkOpenURL;
+    o_CollapsingHeader = static_cast<CollapsingHeader_t>(ImGui::CollapsingHeader);
+    o_SliderScalar = ImGui::SliderScalar;
+    o_InputScalar = ImGui::InputScalar;
 
-    constexpr int hookCount = 11;
+    constexpr int hookCount = 14;
     int installed = 0;
     installed += AttachOne(o_TextUnformatted, hkTextUnformatted, "TextUnformatted") ? 1 : 0;
     installed += AttachOne(o_SeparatorText, hkSeparatorText, "SeparatorText") ? 1 : 0;
@@ -166,6 +194,9 @@ void Tr::InstallImGuiHooks()
     installed += AttachOne(o_TableSetupColumn, hkTableSetupColumn, "TableSetupColumn") ? 1 : 0;
     installed += AttachOne(o_BeginCombo, hkBeginCombo, "BeginCombo") ? 1 : 0;
     installed += AttachOne(o_TextLinkOpenURL, hkTextLinkOpenURL, "TextLinkOpenURL") ? 1 : 0;
+    installed += AttachOne(o_CollapsingHeader, hkCollapsingHeader, "CollapsingHeader") ? 1 : 0;
+    installed += AttachOne(o_SliderScalar, hkSliderScalar, "SliderScalar") ? 1 : 0;
+    installed += AttachOne(o_InputScalar, hkInputScalar, "InputScalar") ? 1 : 0;
 
     LOG_INFO("i18n: {} of {} ImGui label hooks installed", installed, hookCount);
 }
