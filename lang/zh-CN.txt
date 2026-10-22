@@ -54,7 +54,33 @@ Apply Changes=应用更改
 Reset List=重置列表
 
 
-# --- 路径 5：状态文字与格式串，走 TextV ---
+# --- 路径 5：TreeNode 折叠标题，走 Detours hook ---
+Rectangle Settings=矩形设置
+Tracking Settings=追踪设置
+Resource Settings=资源设置
+Syncing Settings=同步设置
+
+
+# --- 路径 6：表格列头，走 Detours hook ---
+Input=输入
+Enable=启用
+Use=使用
+Pattern=匹配模式
+
+
+# --- 路径 7：Combo 收起时的预览值，走 BeginCombo hook ---
+Linear (Default)=线性（默认）
+Non-Linear=非线性
+RCAS=RCAS
+Depth Aware (RCAS)=深度感知（RCAS）
+At most target=至多目标值
+
+
+# --- 路径 8：超链接，走 Detours hook ---
+Open release page=打开发布页面
+
+
+# --- 路径 9：状态文字与格式串，走 TextV ---
 Off=关闭
 Yes=是
 No=否

@@ -26,6 +26,11 @@ using Selectable_t = bool (*)(const char* label, bool selected, ImGuiSelectableF
 using RadioButton_t = bool (*)(const char* label, bool active);
 using Combo_t = bool (*)(const char* label, int* current_item, const char* const items[], int items_count,
                          int popup_max_height_in_items);
+using TreeNode_t = bool (*)(const char* label);
+using TableSetupColumn_t = void (*)(const char* label, ImGuiTableColumnFlags flags, float init_width_or_weight,
+                                    ImGuiID user_id);
+using BeginCombo_t = bool (*)(const char* label, const char* preview_value, ImGuiComboFlags flags);
+using TextLinkOpenURL_t = void (*)(const char* label, const char* url);
 
 TextUnformatted_t o_TextUnformatted = nullptr;
 SeparatorText_t o_SeparatorText = nullptr;
@@ -34,6 +39,10 @@ Button_t o_Button = nullptr;
 Selectable_t o_Selectable = nullptr;
 RadioButton_t o_RadioButton = nullptr;
 Combo_t o_Combo = nullptr;
+TreeNode_t o_TreeNode = nullptr;
+TableSetupColumn_t o_TableSetupColumn = nullptr;
+BeginCombo_t o_BeginCombo = nullptr;
+TextLinkOpenURL_t o_TextLinkOpenURL = nullptr;
 
 void hkTextUnformatted(const char* text, const char* text_end)
 {
@@ -83,6 +92,23 @@ bool hkCombo(const char* label, int* current_item, const char* const items[], in
     return o_Combo(Tr::TranslateLabel(label), current_item, items, items_count, popup_max_height_in_items);
 }
 
+bool hkTreeNode(const char* label) { return o_TreeNode(Tr::TranslateLabel(label)); }
+
+void hkTableSetupColumn(const char* label, ImGuiTableColumnFlags flags, float init_width_or_weight, ImGuiID user_id)
+{
+    o_TableSetupColumn(Tr::TranslateLabel(label), flags, init_width_or_weight, user_id);
+}
+
+// BeginCombo draws the collapsed preview text itself, so the selected item needs
+// translating here. The popup entries are Selectable() calls and are covered by
+// hkSelectable instead.
+bool hkBeginCombo(const char* label, const char* preview_value, ImGuiComboFlags flags)
+{
+    return o_BeginCombo(Tr::TranslateLabel(label), Tr::Translate(preview_value), flags);
+}
+
+void hkTextLinkOpenURL(const char* label, const char* url) { o_TextLinkOpenURL(Tr::TranslateLabel(label), url); }
+
 // Each hook gets its own transaction so that a single failure (a function too small
 // for a trampoline, for instance) cannot take the remaining hooks down with it.
 template <typename T> bool AttachOne(T& original, PVOID hook, const char* name)
@@ -114,8 +140,7 @@ template <typename T> bool AttachOne(T& original, PVOID hook, const char* name)
 
 void Tr::InstallImGuiHooks()
 {
-    // ImGui::Selectable, ImGui::RadioButton and ImGui::Combo are overloaded, so the
-    // wanted overload has to be selected explicitly.
+    // Overloaded functions need the wanted overload selected explicitly.
     o_TextUnformatted = ImGui::TextUnformatted;
     o_SeparatorText = ImGui::SeparatorText;
     o_Checkbox = ImGui::Checkbox;
@@ -123,7 +148,12 @@ void Tr::InstallImGuiHooks()
     o_Selectable = static_cast<Selectable_t>(ImGui::Selectable);
     o_RadioButton = static_cast<RadioButton_t>(ImGui::RadioButton);
     o_Combo = static_cast<Combo_t>(ImGui::Combo);
+    o_TreeNode = static_cast<TreeNode_t>(ImGui::TreeNode);
+    o_TableSetupColumn = ImGui::TableSetupColumn;
+    o_BeginCombo = ImGui::BeginCombo;
+    o_TextLinkOpenURL = ImGui::TextLinkOpenURL;
 
+    constexpr int hookCount = 11;
     int installed = 0;
     installed += AttachOne(o_TextUnformatted, hkTextUnformatted, "TextUnformatted") ? 1 : 0;
     installed += AttachOne(o_SeparatorText, hkSeparatorText, "SeparatorText") ? 1 : 0;
@@ -132,6 +162,10 @@ void Tr::InstallImGuiHooks()
     installed += AttachOne(o_Selectable, hkSelectable, "Selectable") ? 1 : 0;
     installed += AttachOne(o_RadioButton, hkRadioButton, "RadioButton") ? 1 : 0;
     installed += AttachOne(o_Combo, hkCombo, "Combo") ? 1 : 0;
+    installed += AttachOne(o_TreeNode, hkTreeNode, "TreeNode") ? 1 : 0;
+    installed += AttachOne(o_TableSetupColumn, hkTableSetupColumn, "TableSetupColumn") ? 1 : 0;
+    installed += AttachOne(o_BeginCombo, hkBeginCombo, "BeginCombo") ? 1 : 0;
+    installed += AttachOne(o_TextLinkOpenURL, hkTextLinkOpenURL, "TextLinkOpenURL") ? 1 : 0;
 
-    LOG_INFO("i18n: {} of 7 ImGui label hooks installed", installed);
+    LOG_INFO("i18n: {} of {} ImGui label hooks installed", installed, hookCount);
 }

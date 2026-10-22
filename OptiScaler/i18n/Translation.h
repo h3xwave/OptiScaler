@@ -14,8 +14,9 @@
 //     link time inlining that /GL + /LTCG performs, so it cannot silently stop
 //     working.
 //   * The label taking widgets (Checkbox, Button, Selectable, RadioButton, Combo,
-//     SeparatorText, TextUnformatted) are intercepted with Detours hooks installed
-//     from ImGuiTrHooks.cpp. A missed hook only leaves that label in English.
+//     SeparatorText, TextUnformatted, TreeNode, TableSetupColumn, BeginCombo,
+//     TextLinkOpenURL) are intercepted with Detours hooks installed from
+//     ImGuiTrHooks.cpp. A missed hook only leaves that label in English.
 //
 // Translation files live in a "lang" folder next to OptiScaler.dll and are named
 // after a language code, e.g. lang/zh-CN.txt. See lang/zh-CN.txt for the format.
