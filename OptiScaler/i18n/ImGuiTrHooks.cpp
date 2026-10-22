@@ -4,6 +4,8 @@
 
 #include <detours/detours.h>
 #include <imgui/imgui.h>
+// ImGui::FindRenderedTextEnd() lives in the internal header, not the public one.
+#include <imgui/imgui_internal.h>
 
 // Intercepts the ImGui widgets that take a label, so their visible text can be
 // translated without touching a single call site in menu_common.cpp.
