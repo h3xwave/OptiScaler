@@ -47,6 +47,10 @@ Index of this file:
 // System includes
 #include <stdint.h>     // intptr_t
 
+// ---- OptiScaler i18n (added, keep on upstream merges) ----
+#include "i18n/Translation.h"
+// ---------------------------------------------------------
+
 //-------------------------------------------------------------------------
 // Warnings
 //-------------------------------------------------------------------------
@@ -283,6 +287,14 @@ void ImGui::TextV(const char* fmt, va_list args)
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return;
+
+    // ---- OptiScaler i18n (added, keep on upstream merges) ----
+    // Translated here instead of through a Detours hook because Release builds use
+    // /GL and the linker upgrades that to /LTCG, which may inline TextV into Text()
+    // and every other caller. A runtime hook would then silently miss call sites.
+    // See OptiScaler/i18n/Translation.h for the whole picture.
+    fmt = Tr::Translate(fmt);
+    // ---------------------------------------------------------
 
     const char* text, *text_end;
     ImFormatStringToTempBufferV(&text, &text_end, fmt, args);

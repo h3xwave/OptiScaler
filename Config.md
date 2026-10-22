@@ -423,4 +423,48 @@ These can be changed from the in-game menu with real-time results.
 
 ![menu scale](images/ui_scale.png)
 
+#### Menu language / translations
+
+The menu UI can be translated at runtime without touching any source string.
+
+```ini
+[Menu]
+; Language of the menu UI
+; "auto" follows the system UI language, "none" disables translation
+; Example: Language=zh-CN
+Language=auto
+```
+
+Translation tables live in a `lang` folder next to `OptiScaler.dll`:
+
+```
+<game folder>\lang\zh-CN.txt
+```
+
+The file is UTF-8 (a BOM is fine) and holds one `English source=translation` pair per line.
+`#` and `;` start a comment, `\n` `\t` `\\` are expanded, and spaces around the `=` are ignored.
+
+```txt
+# Sidebar tab
+Upscaling=超分辨率
+# Tooltip, keeps the format specifier
+Active input: %s=当前输入: %s
+```
+
+Rules worth knowing:
+
+* The English side has to match the literal in `menu_common.cpp` exactly, case included.
+* A translation may not change the number of format specifiers (`%s`, `%d`, `%.2f`). Entries that
+do are rejected and logged instead of crashing the game. `%%` is a literal percent sign.
+* The `##id` suffix ImGui uses for widget IDs must not be written on the English side; it is
+preserved automatically.
+* When a translation is active and `TTFFontPath` is still `auto`, a CJK capable system font
+(Microsoft YaHei, DengXian, SimHei, SimSun) is picked automatically, because the bundled Hack
+font has no CJK glyphs.
+
+Coverage is split in two: every tooltip and description is translated through a patch inside
+`ImGui::TextV()`, while widget labels (`Checkbox`, `Button`, `Selectable`, `RadioButton`, `Combo`,
+`SeparatorText`, `TextUnformatted`) are intercepted with Detours hooks. If a label stays English,
+that hook did not fire; everything else still works.
+
 

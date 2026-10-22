@@ -151,6 +151,8 @@ copy $(SolutionDir)setup_linux.sh $(SolutionDir)x64\Release\a\ /Y
 md $(SolutionDir)x64\Release\a\OptiScaler\D3D12_OptiScaler\
 copy "$(SolutionDir)external\directx_agility_sdk\lib\*.dll" $(SolutionDir)x64\Release\a\OptiScaler\D3D12_OptiScaler\ /Y
 copy "$(SolutionDir)external\directx_agility_sdk\LICENSE.txt" $(SolutionDir)x64\Release\a\Licenses\DirectX_LICENSE.txt /Y
+md $(SolutionDir)x64\Release\a\lang\
+copy $(SolutionDir)lang\*.txt $(SolutionDir)x64\Release\a\lang\ /Y
 copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y</Command>
     </PostBuildEvent>
     <PreBuildEvent>
@@ -505,6 +507,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="dllmain.h" />
     <ClInclude Include="menu\menu_dx_base.h" />
     <ClInclude Include="menu\menu_common.h" />
+    <ClInclude Include="i18n\Translation.h" />
     <ClInclude Include="menu\menu_dx11.h" />
     <ClInclude Include="menu\menu_dx12.h" />
     <ClInclude Include="menu\menu_overlay_base.h" />
@@ -613,6 +616,8 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="menu\input\input_system_raw.cpp" />
     <ClCompile Include="menu\input\input_system_window.cpp" />
     <ClCompile Include="menu\input\input_system_windows_hooks.cpp" />
+    <ClCompile Include="i18n\Translation.cpp" />
+    <ClCompile Include="i18n\ImGuiTrHooks.cpp" />
     <ClCompile Include="menu\input\input_system_xinput.cpp" />
     <ClCompile Include="misc\IdentifyGpu.cpp" />
     <ClCompile Include="inputs\FSR2_Dx11.cpp" />

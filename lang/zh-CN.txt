@@ -1,0 +1,62 @@
+# OptiScaler 简体中文翻译表
+#
+# 编码：UTF-8（有无 BOM 均可）
+# 位置：lang\zh-CN.txt，即与 OptiScaler.dll 同级的 lang 文件夹内
+# 启用：OptiScaler.ini 中 [Menu] Language=zh-CN（或 auto 跟随系统语言）
+#
+# 格式：
+#   英文原文=中文翻译
+#
+#   1. '=' 两侧的空格会被忽略，但 '=' 本身不能出现在英文原文里。
+#   2. 以 # 或 ; 开头的行是注释，空行会被跳过。
+#   3. 支持 \n（换行）、\t（制表符）、\\（反斜杠）三种转义。
+#   4. 带格式符的字符串（如 %s、%d、%.2f）翻译后必须保持相同数量的格式符，
+#      否则该条会被拒绝并写入日志。%% 是字面百分号，不计入。
+#   5. 英文原文必须与 menu_common.cpp 里的字面量完全一致（区分大小写）。
+#   6. 标签里的 "##xxx" 后缀是 ImGui 的内部 ID，不要写进英文原文里。
+#
+# ---------------------------------------------------------------------------
+# 本文件目前只是【最小验证集】，用于确认四类渲染路径都能正常工作。
+# 验证通过后再按需扩充到全量翻译。
+# ---------------------------------------------------------------------------
+
+
+# --- 路径 1：侧边栏分组名，走 ImGui::TextDisabled -> TextV（imgui_widgets.cpp 补丁）---
+MAIN=主要
+SYSTEM=系统
+ADVANCED=高级
+
+
+# --- 路径 2：侧边栏标签，直接 drawList->AddText，走 Tr::TranslateLabel ---
+Custom=自定义
+Upscaling=超分辨率
+Frame Gen=帧生成
+Latency & FPS=延迟与帧率
+Textures=纹理
+Compatibility=兼容性
+Menu=菜单
+Quirks=特殊处理
+Help / Status=帮助 / 状态
+
+
+# --- 路径 3：卡片标题，走 ImGui::TextUnformatted + FindRenderedTextEnd ---
+Upscalers=超分方案
+
+
+# --- 路径 4：控件标签，走 Detours hook ---
+DXGI Spoofing=DXGI 伪装
+Disable Overlays=禁用叠加层
+Load ASI plugins=加载 ASI 插件
+Disable Splash message=禁用启动画面
+Check for Update=检查更新
+Background Blur=背景模糊
+Apply Changes=应用更改
+Reset List=重置列表
+
+
+# --- 路径 5：状态文字与格式串，走 TextV ---
+Off=关闭
+Yes=是
+No=否
+Spoof=伪装
+Active input: %s=当前输入: %s

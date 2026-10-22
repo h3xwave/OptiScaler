@@ -7,6 +7,8 @@
 
 #include "font/Hack_Compressed.h"
 
+#include "i18n/Translation.h"
+
 #include <proxies/XeSS_Proxy.h>
 #include <proxies/XeFG_Proxy.h>
 #include <proxies/FfxApi_Proxy.h>
@@ -9026,7 +9028,8 @@ void MenuCommon::RenderMainMenuTabs(RenderMenuContext& ctx)
             drawList->AddText(
                 ImVec2(rectMin.x + 10.0f * menuResScale, rectMin.y + (tabHeight - ImGui::GetTextLineHeight()) * 0.5f),
                 ImGui::GetColorU32(ImGuiCol_Text),
-                tabs[i].displayLabel != nullptr ? tabs[i].displayLabel(ctx) : tabs[i].label);
+                // i18n: drawn straight into the draw list, so no ImGui text function sees it
+                Tr::TranslateLabel(tabs[i].displayLabel != nullptr ? tabs[i].displayLabel(ctx) : tabs[i].label));
         }
 
         // OptiPatcher status only visible when used
@@ -9864,6 +9867,12 @@ void MenuCommon::Init(HWND InHwnd, bool isUWP)
         }
     }
 
+    // Load the menu translation table and install the ImGui label hooks. Done after
+    // context creation so the hooks are only installed once an ImGui context exists,
+    // and before the font atlas is built so Tr::FallbackFontPath() can supply a CJK
+    // capable font below.
+    Tr::Initialize();
+
     if (io.Fonts->Fonts.empty() && Config::Instance()->UseHQFont.value_or_default())
     {
         ImFontAtlas* atlas = io.Fonts;
@@ -9880,6 +9889,15 @@ void MenuCommon::Init(HWND InHwnd, bool isUWP)
             io.FontDefault =
                 atlas->AddFontFromFileTTF(wstring_to_string(Config::Instance()->TTFFontPath.value()).c_str(), fontSize,
                                           &fontConfig, io.Fonts->GetGlyphRangesDefault());
+        }
+        else if (const auto& translationFont = Tr::FallbackFontPath(); !translationFont.empty())
+        {
+            // A translation is active and the bundled Hack font has no CJK glyphs.
+            // ImGui 1.92 rasterizes glyphs on demand (every backend sets
+            // ImGuiBackendFlags_RendererHasTextures), so the glyph range argument is
+            // ignored and the system font supplies the missing characters.
+            io.FontDefault =
+                atlas->AddFontFromFileTTF(wstring_to_string(translationFont).c_str(), fontSize, &fontConfig);
         }
         else
         {

@@ -299,6 +299,9 @@
     <ClInclude Include="menu\menu_common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="i18n\Translation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="menu\menu_dx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1341,6 +1344,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="menu\menu_common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="i18n\Translation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="i18n\ImGuiTrHooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="menu\menu_dx_base.cpp">

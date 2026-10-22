@@ -375,6 +375,9 @@ class Config
     CustomOptional<bool> DisableSplash { false };
     CustomOptional<float> FontSize { 14.0f };
     CustomOptional<std::wstring, NoDefault> TTFFontPath;
+    /// Language code for the menu translation layer, e.g. "zh-CN".
+    /// No value means auto: use the system UI locale. "none" disables it.
+    CustomOptional<std::string, NoDefault> Language;
     CustomOptional<int> FGShortcutKey { VK_END };
     CustomOptional<bool> LightTheme { false };
     CustomOptional<bool> OverlaysUseTheme { false };
