@@ -100,7 +100,7 @@ Latency & FPS = 延迟与帧率
 Latest = 最新版本
 Latest Transformer model\nMust use if DoF guide is needed = 最新 Transformer 网络模型\n若需要景深(DoF)引导信息则必须使用此模型
 Latest supported by the dll = 当前 DLL 支持的最高预设
-Lets you override each preset's ratio individually\nNote that not every game supports every quality preset\n\n1.5x on a 1080p screen means internal resolution of 720p\n1080 / 1.5 = 720 = 允许单独覆盖各画质挡位的内部缩放比例。\n注意并非所有游戏都支持全部画质预设。\n\n例如在 1080p 屏幕上设置 1.5x 意味着以 720p 渲染：\n1080 / 1.5 = 720
+Lets you override each preset's ratio individually\nNote that not every game supports every quality preset\n\n1.5x on a 1080p screen means internal resolution of 720p\n1080 / 1.5 \= 720 = 允许单独覆盖各画质挡位的内部缩放比例。\n注意并非所有游戏都支持全部画质预设。\n\n例如在 1080p 屏幕上设置 1.5x 意味着以 720p 渲染：\n1080 / 1.5 = 720
 Lighter and faster than Lanczos3.\nLess prone to ringing artefacts, but slightly blurrier. = 比 Lanczos3 更轻量迅速。\n不易产生振铃边纹瑕疵，但锐度稍低。
 Likely doesn't do much = 通常影响微弱
 Linear (Default) = 线性色彩 (默认)
@@ -123,7 +123,7 @@ Output Scaling = 输出分辨率缩放
 Output Scaling is %s, Target Res: %dx%d (%.2f)\nJitter Count: %d = 输出缩放为 %s，目标分辨率: %dx%d (%.2f)\n抖动采样计数: %d
 Override all = 全局覆盖所有挡位
 Override per quality preset = 按画质挡位分别覆盖
-Overrides every upscaler preset with the set value\n\n1.5x on a 1080p screen means an internal res of 720p\n1080 / 1.5 = 720 = 将所有超分挡位统一覆盖为当前设定的缩放比例。\n\n例如在 1080p 屏幕上设置 1.5x 相当于以 720p 内部渲染：\n1080 / 1.5 = 720
+Overrides every upscaler preset with the set value\n\n1.5x on a 1080p screen means an internal res of 720p\n1080 / 1.5 \= 720 = 将所有超分挡位统一覆盖为当前设定的缩放比例。\n\n例如在 1080p 屏幕上设置 1.5x 相当于以 720p 内部渲染：\n1080 / 1.5 = 720
 PRESET A = 预设 A
 PRESET B = 预设 B
 PRESET C = 预设 C
@@ -232,7 +232,7 @@ Can be used with any FG Output\n\nRequires enabling XeSS-FG in game settings\nSu
 Change FG = 切换帧生成模式
 Changes the multiplier on the fly to hit the target FPS,\nup to the Frame Gen setting (at 2X: FG on or off). = 动态实时调节插帧倍率以契合目标帧率，\n最高上限为预设的插帧倍数（在 2X 模式下表现为自动启闭插帧）。
 Common = 通用
-Converts depth distances into the units of the camera position\nso the cache can follow the camera when you walk.\n0 = only follow rotation\nWrong values make the cache fill wobble while walking\nAlso used by the 3rd person detection\nUnreal Engine is usually around 1000 = 将深度距离转换为镜头坐标系单位，\n使重投影缓存能在玩家走动时跟随摄像机移动。\n0 = 仅跟随镜头旋转\n数值错误会导致走动时边缘补帧出现果冻晃动\n该值也用于第三人称视角检测\n虚幻引擎游戏通常在 1000 左右
+Converts depth distances into the units of the camera position\nso the cache can follow the camera when you walk.\n0 \= only follow rotation\nWrong values make the cache fill wobble while walking\nAlso used by the 3rd person detection\nUnreal Engine is usually around 1000 = 将深度距离转换为镜头坐标系单位，\n使重投影缓存能在玩家走动时跟随摄像机移动。\n0 = 仅跟随镜头旋转\n数值错误会导致走动时边缘补帧出现果冻晃动\n该值也用于第三人称视角检测\n虚幻引擎游戏通常在 1000 左右
 Current DLSSG state: = 当前 DLSSG 状态:
 Current FSR-FG state: = Current FSR-FG 状态:
 Current Streamline FG state: = 当前 Streamline FG 状态:
@@ -469,7 +469,7 @@ Best when can be used, some games are not compatible (e.g. Cyberpunk)\nand will 
 By default, FSR Anti-Lag 2.0/XeLL is used when available.\nThis setting lets you force LatencyFlex instead = 默认情况下优先选用 FSR Anti-Lag 2.0 或 XeLL。\n此选项允许你强制改用通用的开源 LatencyFlex 方案
 Calculated Cap: %.1f = 计算得出的帧率上限: %.1f
 Conservative = 保守模式
-Controls the DXGI Present sync interval, which determines how\nthe swap chain waits for vertical refresh.\n\n0  = Present immediately, no VSync wait.\n1  = Sync to every refresh, normal VSync.\n2+ = Present every N refreshes, reducing effective frame rate.\n\nHigher values can reduce tearing but may increase latency and cap FPS.\nFor most games, use 0 for lowest latency or 1 for normal VSync. = 控制 DXGI Present 呈现同步间隔，决定交换链如何\n等待显示器的垂直刷新信号。\n\n0  = 立即呈现，不等待垂直同步（最低延迟，可能撕裂）。\n1  = 同步到每一次刷新，即标准垂直同步。\n2+ = 每隔 N 次垂直刷新才呈现一次画面，成倍压低帧率。\n\n较高数值可杜绝画面撕裂但会增加操作延迟并锁定帧率。\n绝大多数游戏建议选 0 以追求最低延迟，或选 1 保证画面平滑无撕裂。
+Controls the DXGI Present sync interval, which determines how\nthe swap chain waits for vertical refresh.\n\n0  \= Present immediately, no VSync wait.\n1  \= Sync to every refresh, normal VSync.\n2+ \= Present every N refreshes, reducing effective frame rate.\n\nHigher values can reduce tearing but may increase latency and cap FPS.\nFor most games, use 0 for lowest latency or 1 for normal VSync. = 控制 DXGI Present 呈现同步间隔，决定交换链如何\n等待显示器的垂直刷新信号。\n\n0  = 立即呈现，不等待垂直同步（最低延迟，可能撕裂）。\n1  = 同步到每一次刷新，即标准垂直同步。\n2+ = 每隔 N 次垂直刷新才呈现一次画面，成倍压低帧率。\n\n较高数值可杜绝画面撕裂但会增加操作延迟并锁定帧率。\n绝大多数游戏建议选 0 以追求最低延迟，或选 1 保证画面平滑无撕裂。
 Current method: %s = 当前采用的方法: %s
 FPS Limit = 帧率上限
 FPS Limiter = 帧率限制器
@@ -791,3 +791,8 @@ Use as FPS limit = 直接同步设为当前帧率限制上限
 Uses frametimes provided by\nDLSSG or FSR-FG = 直接采纳 DLSS 帧生成或 FSR 帧生成官方传递的基准帧生成时间
 Vert. FOV = 垂直视场角 (Vert. FoV)
 nvngx.ini detected, please move over to using OptiScaler.ini and delete the old config = 检测到目录中存在已废弃的旧版 nvngx.ini 配置文件，请迁移所有自定义配置至 OptiScaler.ini 并删除该残留文件以防配置冲突
+
+# Additional labels rendered by ImGui APIs not intercepted globally
+Custom Accent Color = 自定义强调色
+Custom BG Colour = 自定义背景颜色
+HUDless Resources = 无界面资源

@@ -7572,7 +7572,7 @@ void MenuCommon::RenderThemeSettings(RenderMenuContext& ctx)
                                  config->MenuAccentColorG.value_or_default(),
                                  config->MenuAccentColorB.value_or_default() };
 
-        if (ImGui::ColorEdit3("Custom Accent Color", accentColor))
+        if (ImGui::ColorEdit3(Tr::TranslateLabel("Custom Accent Color"), accentColor))
         {
             config->MenuAccentColorR = accentColor[0];
             config->MenuAccentColorG = accentColor[1];
@@ -7766,7 +7766,7 @@ void MenuCommon::RenderThemeSettings(RenderMenuContext& ctx)
         float bgColor[3] = { config->MenuBGColorR.value_or_default(), config->MenuBGColorG.value_or_default(),
                              config->MenuBGColorB.value_or_default() };
 
-        if (ImGui::ColorEdit3("Custom BG Colour", bgColor))
+        if (ImGui::ColorEdit3(Tr::TranslateLabel("Custom BG Colour"), bgColor))
         {
             config->MenuBGColorR = bgColor[0];
             config->MenuBGColorG = bgColor[1];
@@ -9406,7 +9406,7 @@ void MenuCommon::RenderMipmapBiasWindow(RenderMenuContext& ctx, ImGuiWindowFlags
             _mipBiasCalculated = log2((float) _renderWidth / (float) _displayWidth);
         }
 
-        if (ImGui::Begin("Mipmap Bias", nullptr, flags))
+        if (ImGui::Begin(Tr::TranslateLabel("Mipmap Bias"), nullptr, flags))
         {
             if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
                 ImGui::SetWindowFocus();
@@ -9552,7 +9552,7 @@ void MenuCommon::RenderHudlessResourcesWindow(RenderMenuContext& ctx, ImGuiWindo
         ImGui::SetNextWindowPos(ImVec2 { posX, posY }, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2 { 400.0f, 300.0f });
 
-        if (ImGui::Begin("HUDless Resources", nullptr, flags))
+        if (ImGui::Begin(Tr::TranslateLabel("HUDless Resources"), nullptr, flags))
         {
             if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow))
                 ImGui::SetWindowFocus();

@@ -69,18 +69,13 @@ void hkTextUnformatted(const char* text, const char* text_end)
         return;
     }
 
-    // ImGui::FindRenderedTextEnd() is the usual non-null text_end: it stops at a
-    // "##id" marker or at the terminator, so the whole string is still a label.
-    // Card titles in menu_common.cpp are drawn this way.
-    if (*text_end == '\0' || (text_end[0] == '#' && text_end[1] == '#'))
-    {
-        const char* translated = Tr::TranslateLabel(text);
-        o_TextUnformatted(translated, ImGui::FindRenderedTextEnd(translated));
-        return;
-    }
-
-    // A genuine sub-range of a larger buffer, which is never a translation key.
-    o_TextUnformatted(text, text_end);
+    // The supplied end is a bounded range, not necessarily NUL-terminated.
+    // Looking beyond it (or performing strlen on it) risks out-of-bounds reads.
+    const auto length = static_cast<size_t>(text_end - text);
+    if (const char* translated = Tr::TranslateRange(text, length))
+        o_TextUnformatted(translated, nullptr);
+    else
+        o_TextUnformatted(text, text_end);
 }
 
 void hkSeparatorText(const char* label) { o_SeparatorText(Tr::TranslateLabel(label)); }

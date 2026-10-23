@@ -51,28 +51,81 @@ std::string& NextLabelBuffer()
     return buffer;
 }
 
-// Counts printf style conversion specifications so a translation cannot change
-// how many arguments ImGui reads out of the va_list.
-int CountFormatSpecifiers(std::string_view text)
+// Compare the full printf conversion spelling and order, never only its count.
+// This preserves va_list types, width/precision '*' arguments and positional indices.
+// clang-format off
+bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view>& specs)
 {
-    int count = 0;
-
     for (size_t i = 0; i < text.size(); ++i)
     {
         if (text[i] != '%')
             continue;
 
-        // "%%" is a literal percent sign, not a conversion.
-        if (i + 1 < text.size() && text[i + 1] == '%')
+        const size_t start = i++;
+        if (i == text.size())
+            return false;
+        if (text[i] == '%')
+            continue;
+
+        const size_t possiblePosition = i;
+        while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+            ++i;
+        if (i < text.size() && text[i] == '$')
+            ++i;
+        else
+            i = possiblePosition;
+
+        while (i < text.size() && std::string_view("-+ #0'").find(text[i]) != std::string_view::npos)
+            ++i;
+
+        auto width = [&]()
+        {
+            if (i < text.size() && text[i] == '*')
+            {
+                ++i;
+                const size_t begin = i;
+                while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+                    ++i;
+                if (i < text.size() && text[i] == '$')
+                    ++i;
+                else
+                    i = begin;
+            }
+            else
+            {
+                while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+                    ++i;
+            }
+        };
+        width();
+        if (i < text.size() && text[i] == '.')
         {
             ++i;
-            continue;
+            width();
         }
 
-        ++count;
-    }
+        if (text.substr(i, 3) == "I64" || text.substr(i, 3) == "I32")
+            i += 3;
+        else if (text.substr(i, 2) == "hh" || text.substr(i, 2) == "ll")
+            i += 2;
+        else if (i < text.size() && std::string_view("hljztLI").find(text[i]) != std::string_view::npos)
+            ++i;
 
-    return count;
+        if (i >= text.size() || std::string_view("diuoxXfFeEgGaAcspnCSZ").find(text[i]) == std::string_view::npos)
+            return false;
+
+        specs.push_back(text.substr(start, i - start + 1));
+    }
+    return true;
+}
+
+// clang-format on
+bool HasCompatibleFormatSpecifiers(std::string_view source, std::string_view translated)
+{
+    std::vector<std::string_view> expected;
+    std::vector<std::string_view> actual;
+    return CollectFormatSpecifiers(source, expected) && CollectFormatSpecifiers(translated, actual) &&
+           expected == actual;
 }
 
 std::string_view Trim(std::string_view value)
@@ -109,6 +162,10 @@ std::string Unescape(std::string_view value)
                 continue;
             case '\\':
                 result.push_back('\\');
+                ++i;
+                continue;
+            case '=':
+                result.push_back('=');
                 ++i;
                 continue;
             default:
@@ -157,7 +214,20 @@ bool LoadTable(const std::filesystem::path& path)
         if (trimmed.empty() || trimmed.front() == '#' || trimmed.front() == ';')
             continue;
 
-        const size_t separator = trimmed.find('=');
+        size_t separator = std::string_view::npos;
+        for (size_t i = 0; i < trimmed.size(); ++i)
+        {
+            if (trimmed[i] == '\\' && i + 1 < trimmed.size())
+            {
+                ++i;
+                continue;
+            }
+            if (trimmed[i] == '=')
+            {
+                separator = i;
+                break;
+            }
+        }
         if (separator == std::string_view::npos)
         {
             LOG_WARN("i18n: line {} has no '=' separator, skipped", lineNumber);
@@ -176,9 +246,9 @@ bool LoadTable(const std::filesystem::path& path)
             continue;
         }
 
-        if (CountFormatSpecifiers(source) != CountFormatSpecifiers(target))
+        if (!HasCompatibleFormatSpecifiers(source, target))
         {
-            LOG_WARN("i18n: line {} changes the number of format specifiers, skipped", lineNumber);
+            LOG_WARN("i18n: line {} has incompatible printf format specifiers, skipped", lineNumber);
             ++rejected;
             continue;
         }
@@ -322,26 +392,28 @@ const char* Tr::Translate(const char* text)
     return entry->second.c_str();
 }
 
+const char* Tr::TranslateRange(const char* text, size_t length)
+{
+    if (text == nullptr || !g_active)
+        return nullptr;
+    const auto entry = g_table.find(std::string_view(text, length));
+    return entry == g_table.end() ? nullptr : entry->second.c_str();
+}
+
 const char* Tr::TranslateLabel(const char* label)
 {
     if (label == nullptr || !g_active)
         return label;
-
     const std::string_view view(label);
     const size_t idSeparator = view.find("##");
-
-    // No hidden id suffix, so the whole label is the key.
-    if (idSeparator == std::string_view::npos)
-        return Translate(label);
-
     const auto entry = g_table.find(view.substr(0, idSeparator));
     if (entry == g_table.end())
         return label;
 
     std::string& buffer = NextLabelBuffer();
     buffer.assign(entry->second);
-    buffer.append(view.substr(idSeparator));
-
+    buffer.append("###");
+    buffer.append(view);
     return buffer.c_str();
 }
 

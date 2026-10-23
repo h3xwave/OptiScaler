@@ -35,6 +35,9 @@ void Initialize();
 // Never returns nullptr for a non-null input.
 const char* Translate(const char* text);
 
+// Translates a bounded string, or returns nullptr when no entry matches.
+const char* TranslateRange(const char* text, size_t length);
+
 // Like Translate() but keeps a trailing "##id" suffix intact so that ImGui
 // widget IDs stay stable when the visible label is translated.
 const char* TranslateLabel(const char* label);

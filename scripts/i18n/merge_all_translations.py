@@ -1,120 +1,88 @@
-# -*- coding: utf-8 -*-
-import json
-import re
+#!/usr/bin/env python3
+"""Rebuild the checked-in Chinese translation table from tracked Python dictionaries.
+
+Run from any working directory:
+  python scripts/i18n/merge_all_translations.py --check
+  python scripts/i18n/merge_all_translations.py --write
+"""
+import argparse
+import pathlib
 
 from tr_data_1 import TR_PART1
 from tr_data_2 import TR_PART2
 from tr_data_3 import TR_PART3
 from tr_data_4 import TR_PART4
 
-with open("sources_to_translate.json", "r", encoding="utf-8") as f:
-    all_sources = json.load(f)
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+OUTPUT = ROOT / "lang" / "zh-CN.txt"
 
-print(f"Total target sources: {len(all_sources)}")
-
-merged = {}
-merged.update(TR_PART1)
-merged.update(TR_PART2)
-merged.update(TR_PART3)
-merged.update(TR_PART4)
-
-print(f"Merged translations count: {len(merged)}")
-
-missing = [s for s in all_sources if s not in merged]
-if missing:
-    print(f"ERROR: {len(missing)} missing sources!")
-    for m in missing[:10]:
-        print(" ", repr(m))
-    exit(1)
-
-print("All 741 sources are 100% covered!")
-
-# Check format specifiers
-def count_fmt(text):
-    cnt = 0
-    i = 0
-    n = len(text)
-    while i < n:
-        if text[i] == '%':
-            if i + 1 < n and text[i + 1] == '%':
-                i += 2
-                continue
-            cnt += 1
-        i += 1
-    return cnt
-
-fmt_mismatches = []
-for src, (zh, reason) in merged.items():
-    if count_fmt(src) != count_fmt(zh):
-        fmt_mismatches.append((src, zh, count_fmt(src), count_fmt(zh)))
-
-if fmt_mismatches:
-    print(f"ERROR: {len(fmt_mismatches)} format specifier mismatches!")
-    for src, zh, c1, c2 in fmt_mismatches:
-        print(f"  {repr(src)} ({c1}) != {repr(zh)} ({c2})")
-    exit(1)
-
-print("All format specifiers match perfectly!")
-
-# Write lang/zh-CN.txt
-# Note: we group the output in lang/zh-CN.txt by modules for clarity and readability
-with open("sources_by_mod.json", "r", encoding="utf-8") as f:
-    by_mod = json.load(f)
-
-mod_titles = {
-    "1_Nav": "模块 1：导航栏、主标签页与侧边栏 (Navigation, Tabs & Sidebar)",
-    "2_Upscaler": "模块 2：超分辨率技术 (Upscalers - DLSS / FSR / XeSS)",
-    "3_FrameGen": "模块 3：帧生成技术 (Frame Generation - DLSSG / FSR-FG / XeFG / OptiFG)",
-    "4_Latency": "模块 4：低延迟与帧率管理 (Low Latency, Reflex, Anti-Lag, FPS Limiter)",
-    "5_Texture": "模块 5：图像锐化、纹理与画质过滤 (Sharpening, Mipmap Bias, Anisotropy, Magnifier)",
-    "6_Compatibility": "模块 6：兼容性、伪装与底层挂钩 (Compatibility, Spoofing, Hooks, Plugins)",
-    "7_Barriers_Quirks": "模块 7：DirectX 12 资源屏障与游戏专属修复 (Resource Barriers & Quirks)",
-    "8_Menu_Overlay": "模块 8：菜单界面、主题、快捷键与性能监控 (Menu UI, Theme, Keybinds, FPS Overlay)",
-    "9_Common": "模块 9：通用按钮、状态与交互控件 (Common Buttons, States & Dialogs)",
+EXTRA_LABELS = {
+    "Custom Accent Color": ("自定义强调色", "ColorEdit3 control"),
+    "Custom BG Colour": ("自定义背景颜色", "ColorEdit3 control"),
+    "HUDless Resources": ("无界面资源", "ImGui window title"),
 }
 
-with open("lang/zh-CN.txt", "w", encoding="utf-8") as out:
-    out.write("# ============================================================================\n")
-    out.write("# OptiScaler 完整简体中文本地化语言包 (Simplified Chinese Translation)\n")
-    out.write("# 编码：UTF-8\n")
-    out.write("# 启用：在 OptiScaler.ini 中设置 [Menu] Language=zh-CN 或 auto\n")
-    out.write("# 条目总数：741 条全量覆盖\n")
-    out.write("# ============================================================================\n\n")
 
-    for mod, items in sorted(by_mod.items()):
-        title = mod_titles.get(mod, mod)
-        out.write(f"\n# ----------------------------------------------------------------------------\n")
-        out.write(f"# {title}\n")
-        out.write(f"# ----------------------------------------------------------------------------\n\n")
-        
-        seen_mod = set()
-        for item in sorted(items):
-            if item in seen_mod:
-                continue
-            seen_mod.add(item)
-            if item in merged:
-                zh, _ = merged[item]
-                # Replace actual newlines in strings if any (they are already escaped \n in keys)
-                out.write(f"{item} = {zh}\n")
+def encode(value: str) -> str:
+    # Existing translation source dictionaries already hold backslash+n escapes.
+    # Escape literal '=' in either side so the C++ loader can find the delimiter.
+    value = value.replace("=", r"\=")
+    return value.replace("\r", r"\r").replace("\n", r"\n").replace("\t", r"\t")
 
-print("Successfully wrote lang/zh-CN.txt!")
 
-# Save complete structured JSON with rationales for inspection or review
-with open("translations_full_with_reasons.json", "w", encoding="utf-8") as out:
-    dump_data = []
-    for mod, items in sorted(by_mod.items()):
-        seen_mod = set()
-        for item in sorted(items):
-            if item in seen_mod:
-                continue
-            seen_mod.add(item)
-            zh, reason = merged[item]
-            dump_data.append({
-                "module": mod_titles.get(mod, mod),
-                "en": item,
-                "zh": zh,
-                "reason": reason
-            })
-    json.dump(dump_data, out, ensure_ascii=False, indent=2)
+def merged_table() -> dict[str, str]:
+    result = {}
+    for data in (TR_PART1, TR_PART2, TR_PART3, TR_PART4, EXTRA_LABELS):
+        for source, (translated, _reason) in data.items():
+            # Preserve the original generator's precedence: later modules override earlier ones.
+            result[source] = translated
+    return result
 
-print("Successfully wrote translations_full_with_reasons.json!")
+
+def generate() -> str:
+    table = merged_table()
+    lines = [
+        "# OptiScaler Simplified Chinese translations",
+        "# Generated by scripts/i18n/merge_all_translations.py --write",
+        "# Use escaped \\= for literal equals signs in sources or translations.",
+        "",
+    ]
+    for source, target in sorted(table.items()):
+        lines.append(f"{encode(source)} = {encode(target)}")
+    return "\n".join(lines) + "\n"
+
+
+def check() -> None:
+    # Import from this directory (including from a clean clone).
+    from validate_translations import split_record, specs
+    seen = {}
+    for index, line in enumerate(OUTPUT.read_text(encoding="utf-8-sig").splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", ";")):
+            continue
+        source, target = split_record(stripped)
+        if source in seen:
+            raise ValueError(f"duplicate key on line {index}: {source!r}")
+        seen[source] = target
+        if specs(source) != specs(target):
+            raise ValueError(f"incompatible format on line {index}: {source!r}")
+    expected = merged_table()
+    # Dataset uses escaped newlines in its keys; normalize them as the loader does.
+    from validate_translations import unescape
+    expected = {unescape(k): unescape(v) for k, v in expected.items()}
+    missing = set(expected) - set(seen)
+    unexpected = set(seen) - set(expected)
+    if missing or unexpected:
+        raise ValueError(f"missing keys: {len(missing)}, unexpected keys: {len(unexpected)}")
+    print(f"Verified {len(seen)} translations against tracked sources")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--write", action="store_true", help="regenerate the language pack")
+    parser.add_argument("--check", action="store_true", help="validate tracked sources")
+    args = parser.parse_args()
+    if args.write:
+        OUTPUT.write_text(generate(), encoding="utf-8")
+        print(f"Generated {OUTPUT}")
+    check()
