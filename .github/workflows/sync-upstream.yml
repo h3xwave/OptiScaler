@@ -52,6 +52,17 @@ jobs:
         run: |
           git push --force-with-lease origin upstream-sync-candidate
 
+      # workflow_dispatch is permitted to start another workflow with GITHUB_TOKEN.
+      # A bot-generated push / PR alone may not trigger normal downstream checks.
+      - name: Request candidate Release validation
+        if: steps.stage.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run just_build_no_signature.yml --ref upstream-sync-candidate
+
       - name: Open or reuse PR
         if: steps.stage.outputs.changed == 'true'
         env:
