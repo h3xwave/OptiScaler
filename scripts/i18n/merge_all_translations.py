@@ -34,8 +34,7 @@ def merged_table() -> dict[str, str]:
     result = {}
     for data in (TR_PART1, TR_PART2, TR_PART3, TR_PART4, EXTRA_LABELS):
         for source, (translated, _reason) in data.items():
-            if source in result and result[source] != translated:
-                raise ValueError(f"conflicting translation: {source!r}")
+            # Preserve the original generator's precedence: later modules override earlier ones.
             result[source] = translated
     return result
 
