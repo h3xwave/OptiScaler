@@ -38,6 +38,9 @@ const char* Translate(const char* text);
 // Translates a bounded string, or returns nullptr when no entry matches.
 const char* TranslateRange(const char* text, size_t length);
 
+// UI-only text without ImGui ID suffixes.
+const char* TranslateVisible(const char* text);
+
 // Like Translate() but keeps a trailing "##id" suffix intact so that ImGui
 // widget IDs stay stable when the visible label is translated.
 const char* TranslateLabel(const char* label);
