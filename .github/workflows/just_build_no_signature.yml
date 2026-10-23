@@ -37,7 +37,9 @@ jobs:
         
     - name: Validate translations
       shell: pwsh
-      run: python scripts/i18n/validate_translations.py
+      run: |
+        python scripts/i18n/validate_translations.py
+        python scripts/i18n/merge_all_translations.py --check
 
     - name: Extract Version
       id: get_version
