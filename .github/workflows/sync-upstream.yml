@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: upstream-sync
@@ -54,7 +55,7 @@ jobs:
 
       # workflow_dispatch is permitted to start another workflow with GITHUB_TOKEN.
       # A bot-generated push / PR alone may not trigger normal downstream checks.
-      - name: Request candidate Release validation
+      - name: Request candidate required checks
         if: steps.stage.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,6 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           gh workflow run just_build_no_signature.yml --ref upstream-sync-candidate
+          gh workflow run clang-format.yml --ref upstream-sync-candidate
 
       - name: Open or reuse PR
         if: steps.stage.outputs.changed == 'true'

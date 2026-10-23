@@ -198,6 +198,7 @@ Index of this file:
 #include "imgui.h"
 #ifndef IMGUI_DISABLE
 #include "imgui_internal.h"
+#include "i18n/Translation.h" // OptiScaler compiled-in menu translation
 
 // System includes
 #include <stdint.h>     // intptr_t
@@ -1598,6 +1599,7 @@ static void TableInitColumnDefaults(ImGuiTable* table, ImGuiTableColumn* column,
 // If (init_width_or_weight <= 0.0f) it is ignored
 void ImGui::TableSetupColumn(const char* label, ImGuiTableColumnFlags flags, float init_width_or_weight, ImGuiID user_id)
 {
+    label = Tr::TranslateVisible(label);
     ImGuiContext& g = *GImGui;
     ImGuiTable* table = g.CurrentTable;
     if (table == NULL)

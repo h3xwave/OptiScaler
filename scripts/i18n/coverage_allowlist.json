@@ -1,0 +1,12 @@
+{
+  "%s %dx": "Technology name and frame multiplier; no prose to translate.",
+  "%s %ux": "Technology name and frame multiplier; no prose to translate.",
+  "FFX 3.1": "FidelityFX SDK version identifier.",
+  "FFX SR": "FidelityFX super-resolution module identifier.",
+  "Linux": "Operating system proper name.",
+  "OptiPatcher": "Companion project's proper name.",
+  "libxess": "Library/module identifier in diagnostic status.",
+  "nvngx.dll": "Exact DLL name in diagnostic status.",
+  "nvngx_dlss": "Exact module identifier in diagnostic status.",
+  "nvngx_dlssd": "Exact module identifier in diagnostic status."
+}

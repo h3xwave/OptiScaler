@@ -1343,9 +1343,6 @@
     <ClCompile Include="i18n\Translation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="i18n\ImGuiTrHooks.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="menu\menu_dx_base.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

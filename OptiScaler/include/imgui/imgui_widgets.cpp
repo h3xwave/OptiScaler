@@ -271,6 +271,17 @@ void ImGui::TextEx(const char* text, const char* text_end, ImGuiTextFlags flags)
 
 void ImGui::TextUnformatted(const char* text, const char* text_end)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    if (text_end == NULL)
+        text = Tr::Translate(text);
+    else if (text != NULL)
+    {
+        if (const char* translated = Tr::TranslateRange(text, static_cast<size_t>(text_end - text)))
+        {
+            text = translated;
+            text_end = NULL;
+        }
+    }
     TextEx(text, text_end, ImGuiTextFlags_NoWidthForLargeClippedText);
 }
 
@@ -775,6 +786,8 @@ bool ImGui::ButtonBehavior(const ImRect& bb, ImGuiID id, bool* out_hovered, bool
 
 bool ImGui::ButtonEx(const char* label, const ImVec2& size_arg, ImGuiButtonFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -1225,6 +1238,8 @@ bool ImGui::ImageButton(ImTextureID user_texture_id, const ImVec2& size, const I
 
 bool ImGui::Checkbox(const char* label, bool* v)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -1347,6 +1362,8 @@ bool ImGui::CheckboxFlags(const char* label, ImU64* flags, ImU64 flags_value)
 
 bool ImGui::RadioButton(const char* label, bool active)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -1497,6 +1514,8 @@ void ImGui::Bullet()
 // (e.g. hovered/active colors are automatically inferred from a single color).
 bool ImGui::TextLink(const char* label)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -1761,6 +1780,8 @@ void ImGui::SeparatorTextEx(ImGuiID id, const char* label, const char* label_end
 
 void ImGui::SeparatorText(const char* label)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateVisible(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return;
@@ -1907,6 +1928,9 @@ static float CalcMaxPopupHeightFromItemCount(int items_count)
 
 bool ImGui::BeginCombo(const char* label, const char* preview_value, ImGuiComboFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
+    preview_value = Tr::Translate(preview_value);
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = GetCurrentWindow();
 
@@ -3281,6 +3305,8 @@ bool ImGui::SliderBehavior(const ImRect& bb, ImGuiID id, ImGuiDataType data_type
 // Read code of e.g. SliderFloat(), SliderInt() etc. or examples in 'Demo->Widgets->Data Types' to understand how to use this function directly.
 bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_min, const void* p_max, const char* format, ImGuiSliderFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -3749,6 +3775,8 @@ void ImGui::SetNextItemRefVal(ImGuiDataType data_type, void* p_data)
 // Read code of e.g. InputFloat(), InputInt() etc. or examples in 'Demo->Widgets->Data Types' to understand how to use this function directly.
 bool ImGui::InputScalar(const char* label, ImGuiDataType data_type, void* p_data, const void* p_step, const void* p_step_fast, const char* format, ImGuiInputTextFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -6491,6 +6519,8 @@ bool ImGui::TreeNode(const void* ptr_id, const char* fmt, ...)
 
 bool ImGui::TreeNode(const char* label)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -6510,6 +6540,8 @@ bool ImGui::TreeNodeV(const void* ptr_id, const char* fmt, va_list args)
 
 bool ImGui::TreeNodeEx(const char* label, ImGuiTreeNodeFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -7072,6 +7104,8 @@ void ImGui::SetNextItemStorageID(ImGuiID storage_id)
 // This is basically the same as calling TreeNodeEx(label, ImGuiTreeNodeFlags_CollapsingHeader). You can remove the _NoTreePushOnOpen flag if you want behavior closer to normal TreeNode().
 bool ImGui::CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -7085,6 +7119,8 @@ bool ImGui::CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags)
 // Do not mistake this with the Open state of the header itself, which you can adjust with SetNextItemOpen() or ImGuiTreeNodeFlags_DefaultOpen.
 bool ImGui::CollapsingHeader(const char* label, bool* p_visible, ImGuiTreeNodeFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -7128,6 +7164,8 @@ bool ImGui::CollapsingHeader(const char* label, bool* p_visible, ImGuiTreeNodeFl
 // FIXME: Selectable() with (size.x == 0.0f) and (SelectableTextAlign.x > 0.0f) followed by SameLine() is currently not supported.
 bool ImGui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const ImVec2& size_arg)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;

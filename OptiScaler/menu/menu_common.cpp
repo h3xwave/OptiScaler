@@ -487,7 +487,7 @@ void MenuCommon::ShowTooltip(const char* tip)
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
     {
         ImGui::BeginTooltip();
-        ImGui::Text(tip);
+        ImGui::TextUnformatted(Tr::Translate(tip));
         ImGui::EndTooltip();
     }
 }
@@ -504,8 +504,9 @@ bool MenuCommon::ConfigCheckbox(const char* label, TOption& option, const char* 
     if (tip != nullptr)
     {
         if (needsRestart)
-            ShowTooltip((std::string(tip) + "\n\nAfter changing this option, please Save Settings.\n"
-                                            "It will be applied on next launch.")
+            ShowTooltip((std::string(Tr::Translate(tip)) + "\n\n" +
+                         Tr::Translate("After changing this option, please Save Settings.\n"
+                                       "It will be applied on next launch."))
                             .c_str());
         else
             ShowTooltip(tip);
@@ -1219,8 +1220,8 @@ void MenuCommon::PopulateCombo(const std::string& name, TStorage& currentValue,
                 currentValue = opt.value;
 
             // Show tooltip for the individual item if it exists
-            if (!opt.tooltip.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-                ImGui::SetTooltip("%s", opt.tooltip.c_str());
+            if (!opt.tooltip.empty())
+                ShowTooltip(opt.tooltip.c_str());
 
             if (opt.disabled)
                 ImGui::EndDisabled();
@@ -8798,8 +8799,8 @@ void MenuCommon::RenderMainMenuBottomBar(RenderMenuContext& ctx)
 
     ImGui::SameLine();
 
-    const auto saveLabel = "Save Settings";
-    const auto closeLabel = "Close";
+    const auto saveLabel = Tr::TranslateLabel("Save Settings");
+    const auto closeLabel = Tr::TranslateLabel("Close");
 
     auto& style = ImGui::GetStyle();
     float rightButtonsWidth = ImGui::CalcTextSize(saveLabel, nullptr, true).x +
@@ -9338,10 +9339,8 @@ void MenuCommon::Init(HWND InHwnd, bool isUWP)
         }
     }
 
-    // Load the menu translation table and install the ImGui label hooks. Done after
-    // context creation so the hooks are only installed once an ImGui context exists,
-    // and before the font atlas is built so Tr::FallbackFontPath() can supply a CJK
-    // capable font below.
+    // Load translations before building the font atlas so the compiled-in ImGui
+    // translation calls can use a CJK-capable system font.
     Tr::Initialize();
 
     if (io.Fonts->Fonts.empty() && Config::Instance()->UseHQFont.value_or_default())
