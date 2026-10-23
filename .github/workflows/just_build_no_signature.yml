@@ -7,6 +7,8 @@ name: Build (No Signing)
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [master]
 #  push:
 #    branches: [ "master" ]
 #  pull_request:
@@ -22,18 +24,21 @@ env:
   BUILD_CONFIGURATION: Release
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: windows-latest
-    environment: Build
 
     steps:
     - uses: actions/checkout@v6
       with:
-        submodules: 'true'
+        submodules: 'recursive'
         
+    - name: Validate translations
+      shell: pwsh
+      run: python scripts/i18n/validate_translations.py
+
     - name: Extract Version
       id: get_version
       working-directory: ${{ github.workspace }}
@@ -98,7 +103,7 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /verbosity:minimal
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:Platform=x64 ${{env.SOLUTION_FILE_PATH}} /verbosity:minimal
       
     - name: Compress the artifact 
       run: |
