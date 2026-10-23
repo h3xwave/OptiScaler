@@ -53,6 +53,7 @@ std::string& NextLabelBuffer()
 
 // Compare the full printf conversion spelling and order, never only its count.
 // This preserves va_list types, width/precision '*' arguments and positional indices.
+// clang-format off
 bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view>& specs)
 {
     for (size_t i = 0; i < text.size(); ++i)
@@ -117,6 +118,7 @@ bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view
     return true;
 }
 
+// clang-format on
 bool HasCompatibleFormatSpecifiers(std::string_view source, std::string_view translated)
 {
     std::vector<std::string_view> expected;
