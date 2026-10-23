@@ -78,7 +78,7 @@ void hkTextUnformatted(const char* text, const char* text_end)
         o_TextUnformatted(text, text_end);
 }
 
-void hkSeparatorText(const char* label) { o_SeparatorText(Tr::TranslateLabel(label)); }
+void hkSeparatorText(const char* label) { o_SeparatorText(Tr::TranslateVisible(label)); }
 
 bool hkCheckbox(const char* label, bool* v) { return o_Checkbox(Tr::TranslateLabel(label), v); }
 
@@ -101,7 +101,7 @@ bool hkTreeNode(const char* label) { return o_TreeNode(Tr::TranslateLabel(label)
 
 void hkTableSetupColumn(const char* label, ImGuiTableColumnFlags flags, float init_width_or_weight, ImGuiID user_id)
 {
-    o_TableSetupColumn(Tr::TranslateLabel(label), flags, init_width_or_weight, user_id);
+    o_TableSetupColumn(Tr::TranslateVisible(label), flags, init_width_or_weight, user_id);
 }
 
 // BeginCombo draws the collapsed preview text itself, so the selected item needs

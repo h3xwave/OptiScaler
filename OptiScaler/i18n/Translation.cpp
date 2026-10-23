@@ -400,6 +400,15 @@ const char* Tr::TranslateRange(const char* text, size_t length)
     return entry == g_table.end() ? nullptr : entry->second.c_str();
 }
 
+const char* Tr::TranslateVisible(const char* text)
+{
+    if (text == nullptr || !g_active)
+        return text;
+    const std::string_view view(text);
+    const auto it = g_table.find(view.substr(0, view.find("##")));
+    return it == g_table.end() ? text : it->second.c_str();
+}
+
 const char* Tr::TranslateLabel(const char* label)
 {
     if (label == nullptr || !g_active)

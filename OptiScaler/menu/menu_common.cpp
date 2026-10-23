@@ -7919,7 +7919,7 @@ void MenuCommon::RenderUpscalerInputsSettings(RenderMenuContext& ctx)
             for (int i = 0; i < 4; i++)
             {
                 ImGui::TableSetColumnIndex(i);
-                ImGui::TextDisabled("%s", ImGui::TableGetColumnName(i));
+                ImGui::TextDisabled("%s", Tr::TranslateVisible(ImGui::TableGetColumnName(i)));
 
                 if (i == 1)
                     ShowTooltip("Hook the inputs of this API, needed before they can be used");
@@ -8388,7 +8388,7 @@ static void StatusFlag(const char* label, bool on, bool warnWhenOn = false)
     if (on)
         ImGui::TextUnformatted(label);
     else
-        ImGui::TextDisabled("%s", label);
+        ImGui::TextDisabled("%s", Tr::TranslateVisible(label));
 }
 
 // Which libraries and GPU features were found. Used by the Status tab and when no upscaler is available
@@ -8454,7 +8454,7 @@ void MenuCommon::RenderStatusInfo(RenderMenuContext& ctx)
     auto pair = [&](const char* label, const std::string& value, bool dim = false)
     {
         ImGui::TableNextColumn();
-        ImGui::TextDisabled("%s", label);
+        ImGui::TextDisabled("%s", Tr::TranslateVisible(label));
 
         ImGui::TableNextColumn();
         if (dim)
@@ -8487,7 +8487,7 @@ void MenuCommon::RenderStatusInfo(RenderMenuContext& ctx)
             auto row = [&](const char* label, const std::string& value)
             {
                 ImGui::TableNextColumn();
-                ImGui::TextDisabled("%s", label);
+                ImGui::TextDisabled("%s", Tr::TranslateVisible(label));
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(value.c_str());
             };
@@ -8875,7 +8875,7 @@ void MenuCommon::RenderCustomTabSettings(RenderMenuContext& ctx)
                 if (tableOpen)
                     ImGui::EndTable();
 
-                ImGui::TextDisabled("%s", box.tab);
+                ImGui::TextDisabled("%s", Tr::TranslateVisible(box.tab));
                 tableOpen = ImGui::BeginTable(box.tab, 2, ImGuiTableFlags_SizingStretchSame);
                 lastTab = box.tab;
             }
@@ -9005,7 +9005,7 @@ void MenuCommon::RenderMainMenuTabs(RenderMenuContext& ctx)
                 if (lastGroup != nullptr)
                     ImGui::Dummy(ImVec2(0.0f, style.ItemSpacing.y));
 
-                ImGui::TextDisabled("%s", tabs[i].group);
+                ImGui::TextDisabled("%s", Tr::TranslateVisible(tabs[i].group));
                 lastGroup = tabs[i].group;
             }
 
@@ -9029,7 +9029,7 @@ void MenuCommon::RenderMainMenuTabs(RenderMenuContext& ctx)
                 ImVec2(rectMin.x + 10.0f * menuResScale, rectMin.y + (tabHeight - ImGui::GetTextLineHeight()) * 0.5f),
                 ImGui::GetColorU32(ImGuiCol_Text),
                 // i18n: drawn straight into the draw list, so no ImGui text function sees it
-                Tr::TranslateLabel(tabs[i].displayLabel != nullptr ? tabs[i].displayLabel(ctx) : tabs[i].label));
+                Tr::TranslateVisible(tabs[i].displayLabel != nullptr ? tabs[i].displayLabel(ctx) : tabs[i].label));
         }
 
         // OptiPatcher status only visible when used
