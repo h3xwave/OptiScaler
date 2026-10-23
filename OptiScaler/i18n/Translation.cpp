@@ -51,37 +51,81 @@ std::string& NextLabelBuffer()
     return buffer;
 }
 
-// Reject changes to printf conversion signatures, not merely their count.
-// Each specifier (including %% and '*' width/precision arguments) must stay
-// byte-for-byte identical and in the same order to preserve the va_list ABI.
-bool ParseFormatSpecifiers(std::string_view text, std::vector<std::string_view>& out)
+// Compare the full printf conversion spelling and order, never only its count.
+// This preserves va_list types, width/precision '*' arguments and positional indices.
+bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view>& specs)
 {
-    auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
-
-    for (size_t i = 0; i < text.size();)
+    for (size_t i = 0; i < text.size(); ++i)
     {
         if (text[i] != '%')
-        {
-            ++i;
             continue;
-        }
 
         const size_t start = i++;
         if (i == text.size())
             return false;
-
         if (text[i] == '%')
-        {
-            out.push_back(text.substr(start, 2));
-            ++i;
             continue;
+
+        const size_t possiblePosition = i;
+        while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+            ++i;
+        if (i < text.size() && text[i] == '$')
+            ++i;
+        else
+            i = possiblePosition;
+
+        while (i < text.size() && std::string_view("-+ #0'").find(text[i]) != std::string_view::npos)
+            ++i;
+
+        auto width = [&]() {
+            if (i < text.size() && text[i] == '*')
+            {
+                ++i;
+                const size_t begin = i;
+                while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+                    ++i;
+                if (i < text.size() && text[i] == '$')
+                    ++i;
+                else
+                    i = begin;
+            }
+            else
+            {
+                while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])))
+                    ++i;
+            }
+        };
+        width();
+        if (i < text.size() && text[i] == '.')
+        {
+            ++i;
+            width();
         }
 
-        // Optional positional argument (e.g. %2$s).
-        const size_t beforePosition = i;
-        while (i < text.size() && isDigit(text[i]))
+        if (text.substr(i, 3) == "I64" || text.substr(i, 3) == "I32")
+            i += 3;
+        else if (text.substr(i, 2) == "hh" || text.substr(i, 2) == "ll")
+            i += 2;
+        else if (i < text.size() && std::string_view("hljztLI").find(text[i]) != std::string_view::npos)
             ++i;
-        if (i < text.size() && text[i] == 'std::string_view Trim(std::string_view value)
+
+        if (i >= text.size() || std::string_view("diuoxXfFeEgGaAcspnCSZ").find(text[i]) == std::string_view::npos)
+            return false;
+
+        specs.push_back(text.substr(start, i - start + 1));
+    }
+    return true;
+}
+
+bool HasCompatibleFormatSpecifiers(std::string_view source, std::string_view translated)
+{
+    std::vector<std::string_view> expected;
+    std::vector<std::string_view> actual;
+    return CollectFormatSpecifiers(source, expected) && CollectFormatSpecifiers(translated, actual) &&
+           expected == actual;
+}
+
+std::string_view Trim(std::string_view value)
 {
     while (!value.empty() && (value.front() == ' ' || value.front() == '\t' || value.front() == '\r'))
         value.remove_prefix(1);
