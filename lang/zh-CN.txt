@@ -791,3 +791,8 @@ Use as FPS limit = 直接同步设为当前帧率限制上限
 Uses frametimes provided by\nDLSSG or FSR-FG = 直接采纳 DLSS 帧生成或 FSR 帧生成官方传递的基准帧生成时间
 Vert. FOV = 垂直视场角 (Vert. FoV)
 nvngx.ini detected, please move over to using OptiScaler.ini and delete the old config = 检测到目录中存在已废弃的旧版 nvngx.ini 配置文件，请迁移所有自定义配置至 OptiScaler.ini 并删除该残留文件以防配置冲突
+
+# Additional labels rendered by ImGui APIs not intercepted globally
+Custom Accent Color = 自定义强调色
+Custom BG Colour = 自定义背景颜色
+HUDless Resources = 无界面资源
