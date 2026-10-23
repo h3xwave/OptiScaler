@@ -77,7 +77,7 @@ bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view
         while (i < text.size() && std::string_view("-+ #0'").find(text[i]) != std::string_view::npos)
             ++i;
 
-        auto width = [&]() {
+        auto width = [&]()
             if (i < text.size() && text[i] == '*')
             {
                 ++i;
@@ -214,8 +214,16 @@ bool LoadTable(const std::filesystem::path& path)
         size_t separator = std::string_view::npos;
         for (size_t i = 0; i < trimmed.size(); ++i)
         {
-            if (trimmed[i] == '\\' && i + 1 < trimmed.size()) { ++i; continue; }
-            if (trimmed[i] == '=') { separator = i; break; }
+            if (trimmed[i] == '\\' && i + 1 < trimmed.size())
+            {
+                ++i;
+                continue;
+            }
+            if (trimmed[i] == '=')
+            {
+                separator = i;
+                break;
+            }
         }
         if (separator == std::string_view::npos)
         {
