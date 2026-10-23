@@ -12,6 +12,7 @@ from tr_data_1 import TR_PART1
 from tr_data_2 import TR_PART2
 from tr_data_3 import TR_PART3
 from tr_data_4 import TR_PART4
+from tr_data_menu import TR_MENU
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "lang" / "zh-CN.txt"
@@ -32,7 +33,7 @@ def encode(value: str) -> str:
 
 def merged_table() -> dict[str, str]:
     result = {}
-    for data in (TR_PART1, TR_PART2, TR_PART3, TR_PART4, EXTRA_LABELS):
+    for data in (TR_PART1, TR_PART2, TR_PART3, TR_PART4, EXTRA_LABELS, TR_MENU):
         for source, (translated, _reason) in data.items():
             # Preserve the original generator's precedence: later modules override earlier ones.
             result[source] = translated

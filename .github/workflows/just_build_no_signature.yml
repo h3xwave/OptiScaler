@@ -38,8 +38,14 @@ jobs:
     - name: Validate translations
       shell: pwsh
       run: |
+        python -m unittest discover -s scripts/i18n -p "test_*.py"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         python scripts/i18n/validate_translations.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         python scripts/i18n/merge_all_translations.py --check
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        python scripts/i18n/check_menu_coverage.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Extract Version
       id: get_version
@@ -100,6 +106,12 @@ jobs:
         
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v3
+
+    - name: Test compiled-in translation with Release optimizations
+      shell: pwsh
+      run: |
+        python scripts/i18n/test_imgui_release.py
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}

@@ -1281,6 +1281,9 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
     if (quirks & GameQuirk::XeFGCameraMotionFill)
         stringQuirks.push_back("Fill XeFG input motion vectors with camera motion");
 
+    if (quirks & GameQuirk::DLSSGFrameLatencyWaitable)
+        stringQuirks.push_back("Request frame latency waitable swapchain for DLSSG");
+
     state->detectedQuirks.append_range(stringQuirks);
     for (auto& stringQuirk : stringQuirks)
         spdlog::info("Quirk: {}", stringQuirk);
@@ -1481,8 +1484,6 @@ void CheckMemoryForProxies()
     XeLLProxy::InitXeLL();
     XeFGInputs::Hook(gameXeFG);
 
-    XellHooks::Hook();
-
     NVNGXProxy::InitNVNGX();
 }
 
@@ -1528,6 +1529,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
         HMODULE handle = nullptr;
         OSVERSIONINFOW winVer { 0 };
+
+        State::Instance().startTime = std::chrono::steady_clock::now();
 
         dllModule = hModule;
         exeModule = GetModuleHandle(nullptr);

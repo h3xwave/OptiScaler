@@ -377,7 +377,7 @@ void Tr::Initialize()
     LOG_INFO("i18n: active, language '{}', {} entries, font '{}'", g_language, g_table.size(),
              g_fontPath.empty() ? std::string("<bundled>") : wstring_to_string(g_fontPath));
 
-    InstallImGuiHooks();
+    LOG_INFO("i18n: using compiled-in ImGui translation (no runtime hooks)");
 }
 
 const char* Tr::Translate(const char* text)

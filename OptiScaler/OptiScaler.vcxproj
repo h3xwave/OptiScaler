@@ -74,6 +74,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR;_WINDOWS;_USRDLL;VK_ENABLE_BETA_EXTENSIONS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -89,7 +90,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>winhttp.lib;WindowsApp.lib;Dbghelp.lib;dxgi.lib;d3d11.lib;d3d12.lib;vulkan-1.lib;dxguid.lib;freetype.lib;ffx_fsr2_api_x64d.lib;ffx_fsr2_api_dx11_x64d.lib;ffx_fsr2_api_dx12_x64d.lib;ffx_fsr2_api_vk_x64d.lib;ffx_fsr2_212_api_dx12_x64d.lib;ffx_fsr2_212_api_vk_x64d.lib;ffx_fsr2_212_api_x64d.lib;d3dcompiler.lib;d3dx11.lib;ffx_backend_dx11_x64d.lib;ffx_fsr3_x64d.lib;ffx_fsr3upscaler_x64d.lib;ffx_opticalflow_x64d.lib;ffx_frameinterpolation_x64d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;WindowsApp.lib;Dbghelp.lib;dxgi.lib;d3d11.lib;d3d12.lib;vulkan-1.lib;dxguid.lib;freetyped.lib;ffx_fsr2_api_x64d.lib;ffx_fsr2_api_dx11_x64d.lib;ffx_fsr2_api_dx12_x64d.lib;ffx_fsr2_api_vk_x64d.lib;ffx_fsr2_212_api_dx12_x64d.lib;ffx_fsr2_212_api_vk_x64d.lib;ffx_fsr2_212_api_x64d.lib;d3dcompiler.lib;d3dx11.lib;ffx_backend_dx11_x64d.lib;ffx_fsr3_x64d.lib;ffx_fsr3upscaler_x64d.lib;ffx_opticalflow_x64d.lib;ffx_frameinterpolation_x64d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>Source.def</ModuleDefinitionFile>
       <DelayLoadDLLs>vulkan-1.dll;dxgi.dll;d3d12.dll;D3DCOMPILER_47.dll</DelayLoadDLLs>
       <StackReserveSize>
@@ -108,6 +109,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -140,6 +142,8 @@ copy $(SolutionDir)external\xess\LICENSE.txt $(SolutionDir)x64\Release\a\License
 md $(SolutionDir)x64\Release\a\OptiScaler
 copy $(SolutionDir)external\xess\bin\*.dll $(SolutionDir)x64\Release\a\OptiScaler\ /Y
 copy $(SolutionDir)external\FidelityFX-SDK\docs\license.md $(SolutionDir)x64\Release\a\Licenses\FidelityFX_v1_LICENSE.md /Y
+copy "$(SolutionDir)external\freetype\LICENSE.TXT" "$(SolutionDir)x64\Release\a\Licenses\FreeType_LICENSE.txt" /Y
+copy "$(SolutionDir)external\freetype\FTL.TXT" "$(SolutionDir)x64\Release\a\Licenses\FreeType_FTL.txt" /Y
 copy $(SolutionDir)external\FidelityFX-SDK\PrebuiltSignedDLL\amd_fidelityfx_vk.dll $(SolutionDir)x64\Release\a\OptiScaler\ /Y
 copy $(SolutionDir)external\FidelityFX-SDK-v2\Kits\FidelityFX\signedbin\amd_fidelityfx_loader_dx12.dll $(SolutionDir)x64\Release\a\OptiScaler\ /Y
 copy $(SolutionDir)external\FidelityFX-SDK-v2\Kits\FidelityFX\signedbin\amd_fidelityfx_upscaler_dx12.dll $(SolutionDir)x64\Release\a\OptiScaler\ /Y
@@ -161,6 +165,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">
     <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NODEBUG;_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -270,10 +275,8 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="framegen\nvngx\Nvngx_Arturs.h" />
     <ClInclude Include="shaders\hudless_compare_compute\HCC_Common.h" />
     <ClInclude Include="shaders\hudless_compare_compute\HCC_Dx12.h" />
-    <ClInclude Include="hooks\Xell_Hooks.h" />
     <ClInclude Include="low_latency\ll_util.h" />
     <ClInclude Include="nvapi\fakenvapi\log.h" />
-    <ClInclude Include="nvapi\fakenvapi\low_latency.h" />
     <ClInclude Include="low_latency\low_latency_tech\ll_antilag2.h" />
     <ClInclude Include="low_latency\low_latency_tech\ll_antilag_vk.h" />
     <ClInclude Include="low_latency\low_latency_tech\ll_latencyflex.h" />
@@ -591,7 +594,6 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="hooks\Kernel_Hooks.cpp" />
     <ClCompile Include="hooks\LibraryLoad_Hooks.cpp" />
     <ClCompile Include="hooks\VulkanwDx12_Hooks.cpp" />
-    <ClCompile Include="hooks\Xell_Hooks.cpp" />
     <ClCompile Include="shaders\reproject\mouseInputs\InputCollection.cpp" />
     <ClCompile Include="shaders\hud_copy\HudCopy_Vk.cpp" />
     <ClCompile Include="inputs\FG\Streamline_Inputs_Sl1_Dx12.cpp" />
@@ -617,7 +619,6 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="menu\input\input_system_window.cpp" />
     <ClCompile Include="menu\input\input_system_windows_hooks.cpp" />
     <ClCompile Include="i18n\Translation.cpp" />
-    <ClCompile Include="i18n\ImGuiTrHooks.cpp" />
     <ClCompile Include="menu\input\input_system_xinput.cpp" />
     <ClCompile Include="misc\IdentifyGpu.cpp" />
     <ClCompile Include="inputs\FSR2_Dx11.cpp" />
@@ -625,8 +626,6 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="inputs\XeSS_Dx11.cpp" />
     <ClCompile Include="low_latency\ll_util.cpp" />
     <ClCompile Include="nvapi\fakenvapi\log.cpp" />
-    <ClCompile Include="nvapi\fakenvapi\low_latency.cpp" />
-    <ClCompile Include="nvapi\fakenvapi\low_latency_d3d.cpp" />
     <ClCompile Include="low_latency\low_latency_tech\ll_antilag2.cpp" />
     <ClCompile Include="low_latency\low_latency_tech\ll_antilag_vk.cpp" />
     <ClCompile Include="low_latency\low_latency_tech\ll_latencyflex.cpp" />
@@ -634,7 +633,6 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="low_latency\low_latency_tech\ll_reflex.cpp" />
     <ClCompile Include="low_latency\low_latency_tech\ll_reflex_vk.cpp" />
     <ClCompile Include="low_latency\low_latency_tech\ll_xell.cpp" />
-    <ClCompile Include="nvapi\fakenvapi\low_latency_vk.cpp" />
     <ClCompile Include="nvapi\fakenvapi\nvapi_calls.cpp" />
     <ClCompile Include="framegen\nvngx\Nvngx_FFX.cpp" />
     <ClCompile Include="framegen\nvngx\Nvngx_Nukems.cpp" />

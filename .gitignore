@@ -147,6 +147,7 @@ _TeamCity*
 
 # Coverlet is a free, cross platform Code Coverage Tool
 coverage*.json
+!scripts/i18n/coverage_allowlist.json
 coverage*.xml
 coverage*.info
 
@@ -429,6 +430,7 @@ FodyWeavers.xsd
 *.la
 *.a
 *.lib
+!external/freetype/freetyped.lib
 
 # Executables
 *.exe

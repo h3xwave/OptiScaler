@@ -809,9 +809,6 @@
     <ClInclude Include="nvapi\fakenvapi\log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nvapi\fakenvapi\low_latency.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="low_latency\low_latency_tech\ll_antilag2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -840,9 +837,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="low_latency\ll_util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hooks\Xell_Hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="misc\IdentifyGpu.h">
@@ -1349,9 +1343,6 @@
     <ClCompile Include="i18n\Translation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="i18n\ImGuiTrHooks.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="menu\menu_dx_base.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1616,12 +1607,6 @@
     <ClCompile Include="nvapi\fakenvapi\log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="nvapi\fakenvapi\low_latency.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="nvapi\fakenvapi\low_latency_d3d.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="low_latency\low_latency_tech\ll_antilag2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -1643,16 +1628,10 @@
     <ClCompile Include="low_latency\low_latency_tech\ll_xell.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="nvapi\fakenvapi\low_latency_vk.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="nvapi\fakenvapi\nvapi_calls.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="low_latency\ll_util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="hooks\Xell_Hooks.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="misc\IdentifyGpu.cpp">
