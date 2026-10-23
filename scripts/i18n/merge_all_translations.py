@@ -74,6 +74,9 @@ def check() -> None:
     unexpected = set(seen) - set(expected)
     if missing or unexpected:
         raise ValueError(f"missing keys: {len(missing)}, unexpected keys: {len(unexpected)}")
+    for source, target in expected.items():
+        if seen[source] != target:
+            raise ValueError(f"translation drift: {source!r}")
     print(f"Verified {len(seen)} translations against tracked sources")
 
 
