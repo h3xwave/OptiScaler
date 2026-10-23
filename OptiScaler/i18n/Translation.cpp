@@ -79,6 +79,7 @@ bool CollectFormatSpecifiers(std::string_view text, std::vector<std::string_view
             ++i;
 
         auto width = [&]()
+        {
             if (i < text.size() && text[i] == '*')
             {
                 ++i;
