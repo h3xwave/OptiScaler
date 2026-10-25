@@ -3307,6 +3307,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 {
     // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
     label = Tr::TranslateLabel(label);
+    format = Tr::Translate(format);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -4552,6 +4553,9 @@ void ImGui::InputTextDeactivateHook(ImGuiID id)
 //  doing UTF8 > U16 > UTF8 conversions on the go to easily interface with stb_textedit. Ideally should stay in UTF-8 all the time. See https://github.com/nothings/stb/issues/188)
 bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_size, const ImVec2& size_arg, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* callback_user_data)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
+    hint = Tr::Translate(hint);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -5607,6 +5611,8 @@ static void ColorEditRestoreHS(const float* col, float* H, float* S, float* V)
 // With typical options: Left-click on color square to open color picker. Right-click to open option menu. CTRL+Click over input fields to edit them and TAB to go to next item.
 bool ImGui::ColorEdit4(const char* label, float col[4], ImGuiColorEditFlags flags)
 {
+    // OptiScaler i18n: compiled into the widget so /GL + /LTCG cannot bypass it.
+    label = Tr::TranslateLabel(label);
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
