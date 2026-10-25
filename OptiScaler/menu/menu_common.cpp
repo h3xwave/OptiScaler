@@ -8043,7 +8043,7 @@ void MenuCommon::RenderFpsOverlaySettings(RenderMenuContext& ctx)
         int currentIndex = config->FpsScale.has_value()
                                ? std::clamp((int) std::lround(config->FpsScale.value() * 10.0f) - 4, 1, 26)
                                : 0;
-        auto scaleText = currentIndex == 0 ? StrFmt("Same as menu (%.1f)", ctx.menuResScale)
+        auto scaleText = currentIndex == 0 ? StrFmt(Tr::Translate("Same as menu (%.1f)"), ctx.menuResScale)
                                            : StrFmt("%.1f", 0.4f + currentIndex / 10.0f);
 
         if (ImGui::SliderInt("Scale", &currentIndex, 0, 26, scaleText.c_str(), ImGuiSliderFlags_ClampOnInput))
@@ -8067,7 +8067,7 @@ void MenuCommon::RenderFpsOverlaySettings(RenderMenuContext& ctx)
         auto statusText = [](const std::string& text)
         {
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("%s", text.c_str());
+            ImGui::TextWrapped("%s", Tr::Translate(text.c_str()));
             ImGui::PopStyleColor();
         };
 
@@ -8080,7 +8080,8 @@ void MenuCommon::RenderFpsOverlaySettings(RenderMenuContext& ctx)
 
             if (!custom)
             {
-                statusText(StrFmt("The rows of %s, set Overlay Type to Custom to change them.", fpsType[currentType]));
+                statusText(StrFmt(Tr::Translate("The rows of %s, set Overlay Type to Custom to change them."),
+                                  Tr::Translate(fpsType[currentType])));
             }
 
             ImGui::BeginDisabled(!custom);
@@ -8368,7 +8369,8 @@ void MenuCommon::RenderFpsOverlaySettings(RenderMenuContext& ctx)
             {
                 const auto& style = ImGui::GetStyle();
                 const float gap = style.ItemSpacing.x * 2.0f;
-                const float width = ImGui::GetFrameHeight() + style.ItemInnerSpacing.x + ImGui::CalcTextSize(label).x;
+                const float width = ImGui::GetFrameHeight() + style.ItemInnerSpacing.x +
+                                    ImGui::CalcTextSize(Tr::TranslateVisible(label)).x;
 
                 if (!firstColorItem && ImGui::GetItemRectMax().x + gap + width <= rowRight)
                     ImGui::SameLine(0.0f, gap);

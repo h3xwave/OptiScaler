@@ -92,7 +92,10 @@ int main(int argc, char** argv)
         CheckText("Menu", [] { ImGui::CollapsingHeader("Menu##header"); });
         CheckText("Menu", [] { if (ImGui::BeginCombo("##combo", "Menu")) ImGui::EndCombo(); });
         CheckText("Menu", [] { int value = 0; ImGui::SliderInt("Menu##slider", &value, 0, 10); });
+        CheckText("Square", [] { float value = 0.0f; ImGui::SliderFloat("Corner Rounding##slider", &value, 0.0f, 16.0f, "Square"); });
         CheckText("Menu", [] { int value = 0; ImGui::InputInt("Menu##input", &value); });
+        CheckText("Custom Font File", [] { char buf[32] = ""; ImGui::InputText("Custom Font File##text", buf, sizeof(buf)); });
+        CheckText("Labels", [] { float rgb[3] = { 1.0f, 1.0f, 1.0f }; ImGui::ColorEdit3("Labels##color", rgb, ImGuiColorEditFlags_NoInputs); });
         CheckText("Menu", [] {
             if (ImGui::BeginTable("table", 1)) {
                 ImGui::TableSetupColumn("Menu");
@@ -117,7 +120,7 @@ int main(int argc, char** argv)
         ImGui::End();
         ImGui::Render();
         ImGui::DestroyContext();
-        std::cout << "PASS: 17 rendered-text checks and inactive fallback under /O2 /GL /LTCG\n";
+        std::cout << "PASS: 20 rendered-text checks and inactive fallback under /O2 /GL /LTCG\n";
         return 0;
     }
     catch (const std::exception& error)

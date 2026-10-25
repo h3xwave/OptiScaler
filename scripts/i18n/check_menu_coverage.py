@@ -28,7 +28,8 @@ CALLS = {
         "Button", "SmallButton", "Checkbox", "RadioButton", "Selectable",
         "Combo", "BeginCombo", "TreeNode", "TreeNodeEx", "CollapsingHeader",
         "SliderInt", "SliderFloat", "SliderScalar", "InputInt", "InputFloat",
-        "InputScalar", "ColorEdit3", "ColorEdit4", "TableSetupColumn",
+        "InputScalar", "InputText", "InputTextMultiline", "InputTextWithHint",
+        "ColorEdit3", "ColorEdit4", "TableSetupColumn",
         "SeparatorText", "TextLinkOpenURL", "Begin",
     )},
     **{f"ImGui::{name}": (0, False) for name in (
@@ -38,7 +39,9 @@ CALLS = {
     "ImGui::TextColored": (1, False),
     **{name: (0, True) for name in (
         "SectionTitle", "ConfigCheckbox", "ScopedCollapsingHeader", "StatusFlag",
+        "optionCheckbox", "scaleSlider", "colorEdit",
     )},
+    "statusText": (0, False),
     "ShowTooltip": (0, False),
     "SeparatorWithHelpMarker": (0, True),
     "PopulateCombo": (0, True),
@@ -115,6 +118,8 @@ def extract(code):
             add(literal(args[position]), offset, label)
         if call == "SeparatorWithHelpMarker" and len(args) > 1:
             add(literal(args[1]), offset)
+        if call in ("ConfigCheckbox", "optionCheckbox") and len(args) > 2:
+            add(literal(args[2]), offset)
 
     # Static sidebar/card tables: group IDs are internal; labels are visible.
     for index, (name, _) in enumerate(tokens):
