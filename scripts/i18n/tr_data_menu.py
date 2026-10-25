@@ -2,6 +2,92 @@
 """Additional menu strings found by the static coverage audit after upstream sync."""
 
 TR_MENU = {
+    # Upstream FPS overlay appearance/layout settings (08e13adf).
+    "A file in C:\\Windows\\Fonts or a full path, Enter applies it": (
+        "填写 C:\\Windows\\Fonts 中的文件名或完整路径，按回车应用", "Custom overlay font tooltip"),
+    "Appearance": ("外观", "Overlay appearance section"),
+    "Applies a copied code. Settings it doesn't list go back to their defaults.": (
+        "应用复制的设置代码，代码中未列出的设置将恢复默认值。", "Import overlay settings tooltip"),
+    "Before the overlay's scale, the far left is the menu's font size": (
+        "此字号在叠加层缩放之前生效，滑块最左端表示使用菜单字号", "Overlay font size tooltip"),
+    "Choose a Windows system font or enter any custom .ttf/.otf file below": (
+        "选择 Windows 系统字体，或在下方输入自定义 .ttf/.otf 字体文件", "Overlay font selector tooltip"),
+    "Colors": ("颜色", "Overlay color section"),
+    "Copies your overlay settings as a code to keep or share": (
+        "将叠加层设置复制为代码，便于保存或分享", "Export overlay settings tooltip"),
+    "Copy Code": ("复制代码", "Export overlay settings button"),
+    "Corner Rounding": ("圆角大小", "Menu and overlay corner radius"),
+    "Custom's rows back to the ones of Full + Graph": (
+        "将自定义模式的显示行恢复为“完整 + 图表”的默认行", "Reset overlay rows tooltip"),
+    "Extra horizontal tracking in pixels between characters": (
+        "字符之间额外的水平间距，单位为像素", "Letter spacing tooltip"),
+    "FPS Row": ("帧率行", "Overlay FPS row selector"),
+    "Font": ("字体", "Overlay font selector"),
+    "Font Size": ("字号", "Overlay font size"),
+    "Graph Height": ("图表高度", "Overlay graph height"),
+    "Horizontal Position": ("水平位置", "Custom overlay position"),
+    "How often FPS and times change, averaged in between. Higher is easier to read.": (
+        "帧率与耗时的更新间隔，期间的数据会取平均值。间隔越大越便于阅读。", "Overlay update interval tooltip"),
+    "Just the number, or with the API, frame time or average FPS, frame generation and upscaler": (
+        "仅显示帧率数值，或同时显示图形 API、帧时间或平均帧率、帧生成和升频算法", "Overlay FPS row tooltip"),
+    "Layout": ("布局", "Overlay layout section"),
+    "Letter Spacing": ("字间距", "Overlay text spacing"),
+    "Menu font": ("菜单字体", "Overlay font fallback"),
+    "Names like FPS: and Avg:": ("FPS:、Avg: 等标签的大小", "Overlay label scale tooltip"),
+    "Order": ("顺序", "Overlay row order column"),
+    "Paste Code": ("粘贴代码", "Import overlay settings button"),
+    "Presets": ("预设", "Overlay appearance presets"),
+    "Presets of the rows, Custom shows the ones chosen in Rows.\nThe Overlay Cycle key switches between them.": (
+        "选择显示行的预设；自定义模式显示在“显示行”中选择的内容。\n可使用叠加层模式切换键切换预设。", "Overlay type tooltip"),
+    "Reset Appearance": ("重置外观", "Reset overlay appearance button"),
+    "Row": ("显示行", "Overlay row column"),
+    "Row Spacing": ("行间距", "Overlay row spacing"),
+    "Rows": ("显示行", "Overlay rows section"),
+    "Shadow Strength": ("阴影强度", "Overlay shadow strength"),
+    "Share Settings": ("分享设置", "Overlay settings exchange section"),
+    "Size of the FPS overlay, independent from the menu scale unless set to Same as menu": (
+        "帧率叠加层的大小；除非设为与菜单相同，否则独立于菜单缩放", "Overlay scale tooltip"),
+    "Text": ("文字", "Overlay text section"),
+    "Text Shadow": ("文字阴影", "Overlay shadow selector"),
+    "The menu theme's colors for the labels, values, graph and background": (
+        "标签、数值、图表和背景使用菜单主题的颜色", "Overlay theme tooltip"),
+    "The numbers": ("数值的大小", "Overlay value scale tooltip"),
+    "Thickness and darkness of the shadow, thickness of the outline": (
+        "调整阴影的厚度与深浅，或描边的粗细", "Overlay shadow strength tooltip"),
+    "Update Interval": ("更新间隔", "Overlay update interval"),
+    "Use Theme": ("使用主题", "Overlay theme colors"),
+    "Vertical Position": ("垂直位置", "Custom overlay position"),
+    # Additional labels passed through arrays and local UI helpers.
+    "With Frame Time": ("附带帧时间", "Overlay FPS row choice"),
+    "With Average FPS": ("附带平均帧率", "Overlay FPS row choice"),
+    "Upscale Ratio in Presets": ("在预设中显示升频比例", "Overlay row option"),
+    "The Upscale Ratio row in the presets from Simple on, Custom has it in its rows": (
+        "在简洁及更详细的预设中显示升频比例行；自定义模式可在显示行中选择", "Overlay ratio row tooltip"),
+    "Reset Rows & Spacing": ("重置显示行和间距", "Reset custom overlay rows"),
+    "Reset Spacing": ("重置间距", "Reset overlay row spacing"),
+    "Classic": ("经典", "Overlay appearance preset"),
+    "Afterburner-Like": ("Afterburner 风格", "Overlay appearance preset"),
+    "Glass Strip": ("玻璃条", "Overlay appearance preset"),
+    "OptiScaler's overlay: every row with the graphs, grey labels with a shadow": (
+        "OptiScaler 叠加层：显示所有行与图表，使用带阴影的灰色标签", "Default overlay preset tooltip"),
+    "OptiScaler's earlier overlay: just the FPS in white, no shadow": (
+        "OptiScaler 早期叠加层：仅显示白色帧率，无阴影", "Classic overlay preset tooltip"),
+    "As MSI Afterburner: Unispace Bold, orange labels, outlined, no background": (
+        "类似 MSI Afterburner：Unispace 粗体、橙色标签、描边，无背景", "Afterburner overlay preset tooltip"),
+    "A strip at the top center: Bahnschrift, cyan values on a dark glass panel": (
+        "顶部居中的条形面板：Bahnschrift 字体，深色玻璃背景与青色数值", "Glass overlay preset tooltip"),
+    "Compact Labels": ("精简标签", "Overlay compact labels option"),
+    "Shorter labels for a narrower overlay: UPS, FT, UT": (
+        "使用 UPS、FT、UT 等简短标签，缩窄叠加层", "Overlay compact labels tooltip"),
+    "Custom Font File": ("自定义字体文件", "Overlay font file input"),
+    "Label Size": ("标签大小", "Overlay label scale"),
+    "Value Size": ("数值大小", "Overlay value scale"),
+    "Shadow": ("阴影", "Overlay shadow type/color"),
+    "Outline": ("描边", "Overlay shadow type"),
+    "Labels": ("标签", "Overlay label color"),
+    "Values": ("数值", "Overlay value color"),
+    "Graph": ("图表", "Overlay graph color"),
+    "Background": ("背景", "Overlay background color"),
     # Runtime labels and descriptions passed through MenuOption/Keybind helpers.
     "FG Input": ("帧生成输入", "Frame generation source selector"),
     "FG Output": ("帧生成输出", "Frame generation backend selector"),
