@@ -38,21 +38,38 @@ user-visible text, extend the extractor and add a regression test.
 ## Release checks
 
 The unsigned Windows build runs tests and all validators, checking each native
-exit code immediately. Upstream sync explicitly dispatches both that build and
-clang-format; every `gh` command targets `--repo "$GITHUB_REPOSITORY"` so the CLI
-cannot resolve the official upstream instead of this fork. The sync workflow
-needs `contents: write`, `pull-requests: write` and `actions: write`.
+exit code immediately. Every sync `gh` command targets `--repo "$GITHUB_REPOSITORY"`
+so the CLI cannot resolve the official upstream instead of this fork.
 
-Repository settings must allow Actions to create PRs and enable **Allow auto-merge**.
-Keep `master` protected with the GitHub Actions `build` and `Formatting Check`
-checks required, branches required to be up to date, and no administrator bypass.
-The scheduled/manual sync stages `upstream-sync-candidate`, dispatches CI, creates
-or reuses its PR, then requests auto-merge for that exact head commit. It uses a
-merge commit to preserve upstream ancestry and all fork-specific commits; it never
-force-pushes `master`. Merge conflicts stop the workflow, while failed or pending
-checks keep the PR unmerged. New upstream UI strings can require additions to the
-tracked dictionaries and language pack before the translation checks will pass.
-Dispatching a workflow or enabling auto-merge alone does not prove CI passed.
+### Unattended upstream sync credentials
+
+Create a fine-grained personal access token owned by a repository maintainer,
+limited to **this fork only**, with these repository permissions:
+
+- **Contents: Read and write** to push the candidate and merge the PR.
+- **Pull requests: Read and write** to create/reuse the PR and enable auto-merge.
+- **Workflows: Read and write** to sync upstream changes to workflow files.
+
+Store it as the repository Actions secret `UPSTREAM_SYNC_TOKEN`. Choose a finite
+expiration and rotate the secret before it expires. Never commit or print the token.
+No Actions API permission is needed: pushes/PRs made with this token trigger the
+existing formatting and unsigned Release workflows normally.
+
+The default `GITHUB_TOKEN` is not a substitute: GitHub requires user approval for
+PR workflows created/updated by `github-actions[bot]`. Explicitly dispatching CI
+alone does not clear that PR approval gate. The sync job fails clearly if its
+secret is missing; expired or insufficiently scoped tokens also stop the sync.
+The workflow's default `GITHUB_TOKEN` is restricted to `contents: read`.
+
+Repository settings must enable **Allow auto-merge**. Keep `master` protected with
+the GitHub Actions `build` and `Formatting Check` checks required, branches required
+to be up to date, and no administrator bypass. The scheduled/manual sync stages
+`upstream-sync-candidate`, creates or reuses its PR, then requests auto-merge for
+that exact head commit. It uses a merge commit to preserve upstream ancestry and
+all fork-specific commits; it never force-pushes `master`. Merge conflicts stop the
+workflow, while failed or pending checks keep the PR unmerged. New upstream UI
+strings can require additions to the tracked dictionaries and language pack before
+the translation checks will pass. Enabling auto-merge alone does not prove CI passed.
 
 Before release, test sidebar labels, status tables, custom tabs and font rendering
 in games using DX11, DX12 and Vulkan. Font-library smoke tests are not a substitute

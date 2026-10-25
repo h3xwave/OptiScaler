@@ -7,9 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 concurrency:
   group: upstream-sync
@@ -19,12 +17,25 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
     steps:
+      # A repository-scoped user token triggers normal push/PR checks without
+      # the manual approval required for PRs created with GITHUB_TOKEN.
+      - name: Require dedicated sync token
+        shell: bash
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Configure the UPSTREAM_SYNC_TOKEN Actions secret (repository-scoped fine-grained token). See scripts/i18n/README.md."
+            exit 1
+          fi
+
       - name: Checkout master
         uses: actions/checkout@v6
         with:
           ref: master
           fetch-depth: 0
+          token: ${{ secrets.UPSTREAM_SYNC_TOKEN }}
           persist-credentials: true
 
       - name: Configure git identity
@@ -53,23 +64,10 @@ jobs:
         run: |
           git push --force-with-lease origin upstream-sync-candidate
 
-      # workflow_dispatch is permitted to start another workflow with GITHUB_TOKEN.
-      # A bot-generated push / PR alone may not trigger normal downstream checks.
-      - name: Request candidate required checks
-        if: steps.stage.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          # In a fork, gh may otherwise resolve the upstream repository.
-          gh workflow run just_build_no_signature.yml --repo "$GITHUB_REPOSITORY" --ref upstream-sync-candidate
-          gh workflow run clang-format.yml --repo "$GITHUB_REPOSITORY" --ref upstream-sync-candidate
-
+      # The dedicated token triggers the existing push/pull_request workflows.
+      # Every gh call must explicitly target this fork, not the official upstream.
       - name: Open or reuse PR and enable auto-merge
         if: steps.stage.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
