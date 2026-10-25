@@ -1,4 +1,4 @@
-# Stage upstream updates for review; never merge directly into master.
+# Stage upstream updates in a PR; auto-merge only after required checks pass.
 name: Sync with Upstream
 
 on:
@@ -62,16 +62,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh workflow run just_build_no_signature.yml --ref upstream-sync-candidate
-          gh workflow run clang-format.yml --ref upstream-sync-candidate
+          # In a fork, gh may otherwise resolve the upstream repository.
+          gh workflow run just_build_no_signature.yml --repo "$GITHUB_REPOSITORY" --ref upstream-sync-candidate
+          gh workflow run clang-format.yml --repo "$GITHUB_REPOSITORY" --ref upstream-sync-candidate
 
-      - name: Open or reuse PR
+      - name: Open or reuse PR and enable auto-merge
         if: steps.stage.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$(gh pr list --base master --head upstream-sync-candidate --state open --json number --jq 'length')" -eq 0 ]; then
-            gh pr create --base master --head upstream-sync-candidate --title "chore: sync upstream (requires CI)" --body "Automated upstream sync candidate. Validate Windows x64 Release, translations, and in-game hooks before merging."
+          pr_url="$(gh pr list --repo "$GITHUB_REPOSITORY" --base master --head upstream-sync-candidate --state open --json url --jq '.[0].url // empty')"
+          if [ -z "$pr_url" ]; then
+            pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --base master --head upstream-sync-candidate --title "chore: sync upstream (requires CI)" --body "Automated upstream sync candidate. Auto-merge waits for the required Windows x64 Release/translation and formatting checks. Conflicts or failed checks require manual fixes. In-game DX11/DX12/Vulkan validation is still required before release.")"
           fi
+          # Preserve upstream ancestry with a merge commit, not squash/rebase.
+          # Requires repository auto-merge and protected master with required CI.
+          gh pr merge "$pr_url" --repo "$GITHUB_REPOSITORY" --auto --merge --match-head-commit "$(git rev-parse HEAD)"
+          printf 'Upstream sync PR: %s\nAuto-merge requested; required checks must pass first.\n' "$pr_url" >> "$GITHUB_STEP_SUMMARY"

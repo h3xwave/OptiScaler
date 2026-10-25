@@ -39,10 +39,20 @@ user-visible text, extend the extractor and add a regression test.
 
 The unsigned Windows build runs tests and all validators, checking each native
 exit code immediately. Upstream sync explicitly dispatches both that build and
-clang-format; the sync workflow needs `contents: write`, `pull-requests: write`
-and `actions: write`. Repository settings must also allow Actions to create PRs.
-Require the GitHub Actions `build` and `Formatting Check` checks on `master`;
-dispatching a workflow alone does not prove it passed.
+clang-format; every `gh` command targets `--repo "$GITHUB_REPOSITORY"` so the CLI
+cannot resolve the official upstream instead of this fork. The sync workflow
+needs `contents: write`, `pull-requests: write` and `actions: write`.
+
+Repository settings must allow Actions to create PRs and enable **Allow auto-merge**.
+Keep `master` protected with the GitHub Actions `build` and `Formatting Check`
+checks required, branches required to be up to date, and no administrator bypass.
+The scheduled/manual sync stages `upstream-sync-candidate`, dispatches CI, creates
+or reuses its PR, then requests auto-merge for that exact head commit. It uses a
+merge commit to preserve upstream ancestry and all fork-specific commits; it never
+force-pushes `master`. Merge conflicts stop the workflow, while failed or pending
+checks keep the PR unmerged. New upstream UI strings can require additions to the
+tracked dictionaries and language pack before the translation checks will pass.
+Dispatching a workflow or enabling auto-merge alone does not prove CI passed.
 
 Before release, test sidebar labels, status tables, custom tabs and font rendering
 in games using DX11, DX12 and Vulkan. Font-library smoke tests are not a substitute
