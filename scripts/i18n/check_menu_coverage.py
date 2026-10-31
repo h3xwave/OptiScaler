@@ -121,9 +121,9 @@ def extract(code):
         if call in ("ConfigCheckbox", "optionCheckbox") and len(args) > 2:
             add(literal(args[2]), offset)
 
-    # Static sidebar/card tables: group IDs are internal; labels are visible.
+    # Static sidebar/card/preset tables: IDs are internal; names and tips are visible.
     for index, (name, _) in enumerate(tokens):
-        if name not in ("Tab", "MenuBox") or index + 6 >= len(tokens):
+        if name not in ("Tab", "MenuBox", "OverlayPreset") or index + 6 >= len(tokens):
             continue
         if [t for t, _ in tokens[index + 2:index + 6]] != ["[", "]", "=", "{"]:
             continue
@@ -137,9 +137,11 @@ def extract(code):
                     fields, offset = [], pos
             elif token == "}":
                 if depth == 2:
-                    # First item is an internal ID/group, next items are labels.
-                    for field in fields[1:3 if name == "MenuBox" else 2]:
-                        add(field, offset, True)
+                    # Presets start with a visible name and tip, then internal settings.
+                    # Cards/tabs start with an internal ID/group before their labels.
+                    visible = fields[:2] if name == "OverlayPreset" else fields[1:3 if name == "MenuBox" else 2]
+                    for field in visible:
+                        add(field, offset, name != "OverlayPreset")
                 depth -= 1
                 if depth == 0:
                     break
