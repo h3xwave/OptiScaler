@@ -2,6 +2,24 @@
 """Additional menu strings found by the static coverage audit after upstream sync."""
 
 TR_MENU = {
+    # Upstream sync through ab379b25: Vulkan FFX, custom providers and overlay changes.
+    "Custom DLSSG from the custom folder": (
+        "从 custom 文件夹加载的自定义 DLSSG", "Custom frame generation backend"),
+    "Custom DLSSG from custom\\%s\\dlssg": (
+        "来自 custom\\%s\\dlssg 的自定义 DLSSG", "Custom frame generation path"),
+    "Frame Generation (%s)": ("帧生成（%s）", "Custom frame generation section title"),
+    "Missing amd_fidelityfx_framegeneration_vk.dll": (
+        "缺少 amd_fidelityfx_framegeneration_vk.dll", "Vulkan frame generation availability"),
+    "FFX Vk": ("FFX Vulkan", "Vulkan FidelityFX loader status"),
+    "FFX Vk SR": ("FFX Vulkan 超分辨率", "Vulkan FidelityFX upscaler status"),
+    "FFX Vk FG": ("FFX Vulkan 帧生成", "Vulkan FidelityFX frame generation status"),
+    "Hide Averages": ("隐藏平均值", "Overlay averages visibility"),
+    "Only the current values, without the averages of FPS, frame time and upscaler time": (
+        "仅显示当前数值，不显示帧率、帧时间及超分辨率耗时的平均值", "Hide averages tooltip"),
+    "Strip": ("顶部信息条", "Overlay appearance preset"),
+    "A strip at the top center: Bahnschrift, FPS and upscaler time in orange on a dark panel": (
+        "屏幕顶部居中的信息条：Bahnschrift 字体，在深色面板上以橙色显示帧率和超分辨率耗时", "Strip preset tooltip"),
+    "Low latency timings, whole frame:": ("低延迟耗时，整帧：", "Overlay low latency total label"),
     # Upstream FPS overlay appearance/layout settings (08e13adf).
     "A file in C:\\Windows\\Fonts or a full path, Enter applies it": (
         "可输入 C:\\Windows\\Fonts 下的字体文件名或完整路径，按回车键生效", "Custom overlay font tooltip"),

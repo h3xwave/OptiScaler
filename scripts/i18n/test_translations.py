@@ -88,6 +88,17 @@ class CoverageTests(unittest.TestCase):
             "Latency", "Category", "Card", "Quirks and ASI", "ASI", "Quirks"
         })
 
+    def test_overlay_preset_names_and_tips_exclude_settings(self):
+        source = '''
+            static const OverlayPreset presets[] = {
+                { "Strip", "An orange strip", "Rows=fps;HideAverages=true" },
+                { "Classic", "Earlier overlay", "Shadow=0" },
+            };
+        '''
+        self.assertEqual(set(coverage.extract(source)), {
+            "Strip", "An orange strip", "Classic", "Earlier overlay"
+        })
+
     def test_option_descriptions_and_keybinds(self):
         source = r'''
             std::vector<MenuOption<FGInput>> inputs;

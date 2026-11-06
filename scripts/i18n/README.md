@@ -20,7 +20,8 @@ values and printf signatures rather than requiring a byte-identical file.
 ## Coverage boundary
 
 `check_menu_coverage.py` checks literal arguments to its listed ImGui/helper
-functions, sidebar/card tables, MenuOption labels/descriptions/disabled reasons,
+functions, sidebar/card tables, overlay preset names/descriptions,
+MenuOption labels/descriptions/disabled reasons,
 Keybind labels, and the literal choices in `QuirksTabLabel`.
 It handles comments, adjacent literals and hidden widget IDs. Each intentionally
 untranslated technical identifier needs a reason in `coverage_allowlist.json`.
