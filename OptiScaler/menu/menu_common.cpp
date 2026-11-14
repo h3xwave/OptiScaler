@@ -5928,8 +5928,9 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             if (status.metering)
             {
-                ImGui::TextColored(StatusOk(), "Driver pacing: %s, %uX",
-                                   status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode" : "adaptive mode",
+                ImGui::TextColored(StatusOk(), Tr::Translate("Driver pacing: %s, %uX"),
+                                   Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode"
+                                                                                               : "adaptive mode"),
                                    status.generatedFrames + 1);
                 ShowTooltip("AMD driver flip metering holds the flips of the generated frames\n"
                             "Adaptive mode is FSR's and paces one generated frame,\n"
@@ -5951,7 +5952,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             if (FAILED(status.configResult))
             {
-                ImGui::TextColored(StatusError(), "The driver rejected the config: %08X, status %u",
+                ImGui::TextColored(StatusError(), Tr::Translate("The driver rejected the config: %08X, status %u"),
                                    (UINT) status.configResult, status.configStatus);
             }
 
@@ -5966,8 +5967,8 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                 // At least 6X, like DLSSG, so other FG replacements don't need a new one. The driver allows 15.
                 const UINT regFrames = (UINT) std::clamp(std::max(providerMax, 5), 1, 15);
 
-                ImGui::TextColored(StatusWarn(), "The driver allows up to %dX, the FG replacement %dX", driverMax + 1,
-                                   providerMax + 1);
+                ImGui::TextColored(StatusWarn(), Tr::Translate("The driver allows up to %dX, the FG replacement %dX"),
+                                   driverMax + 1, providerMax + 1);
                 ImGui::TextWrapped("AMD's driver only paces 2X by default. More needs a registry setting.\n"
                                    "Button below creates a .reg file next to the game's exe.\n"
                                    "Run it and restart your computer.");
@@ -5983,13 +5984,14 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
                 if (regFile.has_value() && regFile->has_value())
                 {
-                    ImGui::TextColored(StatusOk(), "Saved %s", wstring_to_string(regFile->value().wstring()).c_str());
+                    ImGui::TextColored(StatusOk(), Tr::Translate("Saved %s"),
+                                       wstring_to_string(regFile->value().wstring()).c_str());
                     ImGui::TextWrapped("Double-click it and allow the change (needs admin), then restart Windows. "
                                        "The file says how to undo it.");
                 }
                 else if (regFile.has_value())
                 {
-                    ImGui::TextColored(StatusError(), "Couldn't create it: %s", regFile->error().c_str());
+                    ImGui::TextColored(StatusError(), Tr::Translate("Couldn't create it: %s"), regFile->error().c_str());
                 }
             }
         }
