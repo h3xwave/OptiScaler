@@ -5928,10 +5928,10 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
 
             if (status.metering)
             {
-                ImGui::TextColored(StatusOk(), Tr::Translate("Driver pacing: %s, %uX"),
-                                   Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode"
-                                                                                               : "adaptive mode"),
-                                   status.generatedFrames + 1);
+                ImGui::TextColored(
+                    StatusOk(), Tr::Translate("Driver pacing: %s, %uX"),
+                    Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode" : "adaptive mode"),
+                    status.generatedFrames + 1);
                 ShowTooltip("AMD driver flip metering holds the flips of the generated frames\n"
                             "Adaptive mode is FSR's and paces one generated frame,\n"
                             "frame index mode paces more");
@@ -5991,7 +5991,8 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                 }
                 else if (regFile.has_value())
                 {
-                    ImGui::TextColored(StatusError(), Tr::Translate("Couldn't create it: %s"), regFile->error().c_str());
+                    ImGui::TextColored(StatusError(), Tr::Translate("Couldn't create it: %s"),
+                                       regFile->error().c_str());
                 }
             }
         }
