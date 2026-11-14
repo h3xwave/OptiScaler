@@ -2,6 +2,99 @@
 """Additional menu strings found by the static coverage audit after upstream sync."""
 
 TR_MENU = {
+    # Upstream sync through 992f4e19: plugin tabs, AMD flip metering, DLSSD and Vulkan present mode.
+    "Flip Meter (WIP)": ("翻转节拍（开发中）", "AMD driver flip metering output"),
+    "Frames of a FG Nvngx Replacement, paced by AMD's driver flip metering\n\n- AMD only, needs driver support\n"
+    "- Only generates in exclusive or borderless fullscreen\n- Works with Anti-Lag 2": (
+        "由 AMD 驱动翻转节拍控制帧生成替代方案的输出节奏\n\n- 仅支持 AMD 显卡，需要驱动支持\n"
+        "- 仅在独占全屏或无边框全屏下生成帧\n- 可与 Anti-Lag 2 同时使用", "Flip Meter output tooltip"),
+    "Flip Meter Settings": ("翻转节拍设置", "Flip Meter card"),
+    "Flip metering isn't supported by the driver": (
+        "当前驱动不支持翻转节拍", "Unsupported Flip Meter reason"),
+    "Flip HUDless": ("翻转无界面纹理", "HUDless texture orientation"),
+    "Flip the HUDless texture\nGames can also request it with the Opti.Hudless.Flip parameter": (
+        "上下翻转无界面纹理\n游戏也可通过 Opti.Hudless.Flip 参数请求翻转", "Flip HUDless tooltip"),
+    "Driver pacing: %s, %uX": ("驱动节拍：%s，%u 倍", "Driver flip metering status"),
+    "frame index mode": ("帧索引模式", "AMD flip metering mode"),
+    "adaptive mode": ("自适应模式", "AMD flip metering mode"),
+    "AMD driver flip metering holds the flips of the generated frames\n"
+    "Adaptive mode is FSR's and paces one generated frame,\nframe index mode paces more": (
+        "AMD 驱动翻转节拍会控制生成帧的呈现节奏\n"
+        "自适应模式由 FSR 控制，每次只安排一帧生成帧；\n帧索引模式可安排更多生成帧", "Driver pacing tooltip"),
+    "Driver pacing: off while no frames are generated": (
+        "驱动节拍：当前未生成帧，节拍已关闭", "Driver pacing inactive"),
+    "Frame generation is off, or the game doesn't send\nits inputs, like in menus and loading screens": (
+        "帧生成已关闭，或游戏未发送帧生成输入\n例如在菜单和加载画面中", "Driver pacing inactive tooltip"),
+    "Driver pacing: off, only the game's frames are shown": (
+        "驱动节拍：已关闭，仅显示游戏自身渲染的帧", "Driver pacing error"),
+    "Needs exclusive fullscreen or a window covering the whole display": (
+        "需要独占全屏，或覆盖整个显示器的窗口", "Flip Meter fullscreen requirement"),
+    "The driver rejected the config: %08X, status %u": (
+        "驱动拒绝了该配置：%08X，状态 %u", "Flip Meter configuration error"),
+    "The driver allows up to %dX, the FG replacement %dX": (
+        "驱动最多允许 %d 倍，当前帧生成替代方案为 %d 倍", "Flip Meter multiplier limit"),
+    "AMD's driver only paces 2X by default. More needs a registry setting.\n"
+    "Button below creates a .reg file next to the game's exe.\nRun it and restart your computer.": (
+        "AMD 驱动默认只支持 2 倍节拍，更高倍率需要修改注册表。\n"
+        "下方按钮会在游戏 EXE 旁生成 .reg 文件。\n运行该文件并重启电脑。", "Flip Meter registry notice"),
+    "Create .reg file": ("创建 .reg 文件", "Flip Meter registry action"),
+    "Create .reg file##flipmeter": ("创建 .reg 文件", "Flip Meter registry action"),
+    "Saved %s": ("已保存 %s", "File creation success"),
+    "Couldn't create it: %s": ("无法创建：%s", "File creation failure"),
+    "Double-click it and allow the change (needs admin), then restart Windows. The file says how to undo it.": (
+        "双击该文件并允许更改（需要管理员权限），然后重启 Windows。文件中说明了如何撤销更改。", "Registry file instructions"),
+    "Ray Reconstruction": ("光线重建", "RR upscaler selector"),
+    "No denoise": ("不降噪", "RR upscaler choice"),
+    "Upscaler used when Ray Reconstruction is turned on in the game.": (
+        "游戏中启用光线重建时使用的超分辨率算法。", "RR offer tooltip"),
+    "No DLSSD can run on this GPU, so the game doesn't offer Ray Reconstruction.\n"
+    "Picking an upscaler here lets you turn it on in the game.": (
+        "该显卡无法运行 DLSSD，因此游戏不会提供光线重建。\n在此选择超分算法可在游戏中启用它。", "RR unavailable tooltip"),
+    "This upscaler can't denoise.\nWith DLSSD on in the game, image may look grainy or noisy.": (
+        "此超分算法无法降噪。\n游戏中启用 DLSSD 时，画面可能出现颗粒或噪点。", "RR denoise warning"),
+    "DLSSD is on in the game, but this upscaler can't denoise.\nImage may look grainy or noisy.": (
+        "游戏中已启用 DLSSD，但此超分算法无法降噪。\n画面可能出现颗粒或噪点。", "RR denoise warning"),
+    "Save Settings and restart the game to apply": (
+        "保存设置并重启游戏以应用更改", "RR restart notice"),
+    "FSR FG Provider": ("FSR 帧生成提供方", "Custom FSR FG selector"),
+    "FFX frame generation and swapchain used by FSR FG\nCustom ones are from custom\\<name>\\ffx_fg(_vk) or plugins": (
+        "FSR 帧生成使用的 FFX 帧生成与交换链\n自定义提供方来自 custom\\<名称>\\ffx_fg(_vk) 或插件", "FSR FG provider tooltip"),
+    "GB Ver: %d.%d": ("GB 版本：%d.%d", "Nvngx anti-ghosting version"),
+    "DE Ver: %d.%d.%d.%d   GB Ver: %d.%d": ("DE 版本：%d.%d.%d.%d   GB 版本：%d.%d", "Nvngx versions"),
+    "Lowers sharpness at high contrast areas.": (
+        "降低高对比区域的锐化强度。", "Contrast tooltip"),
+    "If UI is too bright, disable this option": (
+        "如果 UI 过亮，请关闭此选项", "UI gamma tooltip"),
+    "Unblend UI": ("分离 UI 叠加", "HUDfix UI unblend"),
+    "Rebuild the HUDless by removing the UI texture from the frame\n"
+    "FSR-FG gets the UI only this way, DLSSG takes the UI texture directly": (
+        "从画面中移除 UI 纹理以重建无界面帧\nFSR 帧生成只能通过这种方式取得 UI，DLSSG 则直接使用 UI 纹理", "Unblend UI tooltip"),
+    "Afterburner": ("Afterburner 风格", "Overlay appearance preset"),
+    "As MSI Afterburner: Unispace Bold, orange labels, outlined, no background": (
+        "仿 MSI Afterburner 风格：Unispace 粗体、橙色标签、黑色描边、无背景底板", "Afterburner preset tooltip"),
+    "Lemon zest": ("柠檬青", "Overlay appearance preset"),
+    "A winning submission from user Voodoo: a top center strip in Unispace Bold, lime values": (
+        "用户 Voodoo 的获奖预设：顶部居中的 Unispace 粗体信息条，青柠色数值", "Lemon zest preset tooltip"),
+    "Present Mode": ("呈现模式", "Vulkan present mode selector"),
+    "Game's": ("游戏默认", "Vulkan present mode default"),
+    "Game's present mode: %s": ("游戏当前呈现模式：%s", "Vulkan present mode status"),
+    "Overrides the game's Vulkan present mode, the game recreates its swapchain to apply it.\n\n"
+    "Immediate: no V-Sync, tears.\nMailbox: no tearing, newest frame replaces the queued one.\n"
+    "FIFO: V-Sync.\nFIFO Relaxed: V-Sync, tears when below the refresh rate.\n"
+    "FIFO Latest Ready: V-Sync, shows the newest ready frame at each refresh.\n\n"
+    "Mailbox and FIFO Latest Ready can drop generated frames above the refresh rate.\n"
+    "Only modes the display supports are listed.": (
+        "覆盖游戏的 Vulkan 呈现模式；游戏会重建交换链以应用更改。\n\n"
+        "Immediate：关闭垂直同步，可能出现撕裂。\nMailbox：不撕裂，新帧替换已排队帧。\n"
+        "FIFO：启用垂直同步。\nFIFO Relaxed：启用垂直同步，低于刷新率时可能撕裂。\n"
+        "FIFO Latest Ready：启用垂直同步，每次刷新显示最新的就绪帧。\n\n"
+        "Mailbox 和 FIFO Latest Ready 在高于刷新率时可能丢弃生成帧。\n仅列出显示器支持的模式。", "Vulkan present mode tooltip"),
+    "VLK + Ext": ("Vulkan + 扩展", "Vulkan spoofing status"),
+    "VLK Ext": ("Vulkan 扩展", "Vulkan extension spoofing status"),
+    "VLK": ("Vulkan", "Vulkan spoofing status"),
+    "DXGI": ("DXGI", "DXGI spoofing status"),
+    "Spoof": ("伪装", "Spoofing status label"),
+    "Ultra Performance": ("超高性能", "Upscaler quality preset"),
     # Upstream sync through ab379b25: Vulkan FFX, custom providers and overlay changes.
     "Custom DLSSG from the custom folder": (
         "从 custom 文件夹加载的自定义 DLSSG", "Custom frame generation backend"),
