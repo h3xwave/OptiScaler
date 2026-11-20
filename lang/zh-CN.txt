@@ -260,6 +260,7 @@ Downscaler = 降采样算法
 Draw UI over = 强制在最终画面上方覆映 UI
 Draws UI resource over the final image\nIf no UI visible, enable this! = 将 UI 资源强制盖印在最终合成图像之上\n如果开启插帧后游戏所有界面消失不见，请务必启用此项！
 Driver pacing: %s, %uX = 驱动节拍：%s，%u 倍
+Driver pacing: %s = 驱动节拍：%s
 Driver pacing: off while no frames are generated = 驱动节拍：当前未生成帧，节拍已关闭
 Driver pacing: off, only the game's frames are shown = 驱动节拍：已关闭，仅显示游戏自身渲染的帧
 Dump (Shift+Del) = 转储调试信息 (Shift+Del)

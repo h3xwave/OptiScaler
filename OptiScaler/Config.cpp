@@ -448,7 +448,10 @@ bool Config::Reload(std::filesystem::path iniPath)
 
             NvngxFGDispatchFlags.set_from_config(readUInt("NvngxFG", "DispatchFlags"));
             NvngxFGShowDebug.set_from_config(readBool("NvngxFG", "ShowDebug"));
-            NvngxFGDisableHudless.set_from_config(readBool("NvngxFG", "DisableHudless"));
+
+            // Older configs keep it in [NvngxFG], it only applied with DLSSG via Nvngx as FG Input
+            if (FGInput.value_or_default() == FGInput::NvngxFG)
+                FGDisableHudless.set_from_config(readBool("NvngxFG", "DisableHudless"));
         }
 
         // Logging
@@ -581,6 +584,21 @@ bool Config::Reload(std::filesystem::path iniPath)
             DADepthScale.set_from_config(readFloat("CAS", "DADepthScale"));
             DADepthBias.set_from_config(readFloat("CAS", "DADepthBias"));
             DAClampOutput.set_from_config(readBool("CAS", "DAClampOutput"));
+
+            if (auto setting = readInt("CAS", "BabaModel"); setting.has_value())
+                BabaNeuralModel.set_from_config(std::clamp(setting.value(), 0, 1));
+
+            if (auto setting = readFloat("CAS", "BabaEdgeResponse"); setting.has_value())
+                BabaNeuralEdgeResponse.set_from_config(std::clamp(setting.value(), -1.0f, 1.0f));
+
+            if (auto setting = readInt("CAS", "BabaDebugView"); setting.has_value())
+                BabaNeuralDebugView.set_from_config(std::clamp(setting.value(), 0, 2));
+
+            if (auto setting = readInt("CAS", "OptiSharpenModel"); setting.has_value())
+                OptiSharpenModel.set_from_config(std::clamp(setting.value(), 0, 5));
+
+            if (auto setting = readInt("CAS", "OptiSharpenDebugView"); setting.has_value())
+                OptiSharpenDebugView.set_from_config(std::clamp(setting.value(), 0, 2));
 
             MotionSharpnessDebug.set_from_config(readBool("CAS", "SharpenerDebug"));
         }
@@ -1724,8 +1742,6 @@ bool Config::SaveIni()
         ini.SetValue("NvngxFG", "DispatchFlags",
                      GetIntValue(Instance()->NvngxFGDispatchFlags.value_for_config(), true).c_str());
         ini.SetValue("NvngxFG", "ShowDebug", GetBoolValue(Instance()->NvngxFGShowDebug.value_for_config()).c_str());
-        ini.SetValue("NvngxFG", "DisableHudless",
-                     GetBoolValue(Instance()->NvngxFGDisableHudless.value_for_config()).c_str());
     }
 
     // Sharpness
@@ -1757,6 +1773,14 @@ bool Config::SaveIni()
         ini.SetValue("CAS", "DADepthScale", GetFloatValue(Instance()->DADepthScale.value_for_config()).c_str());
         ini.SetValue("CAS", "DADepthBias", GetFloatValue(Instance()->DADepthBias.value_for_config()).c_str());
         ini.SetValue("CAS", "DAClampOutput", GetBoolValue(Instance()->DAClampOutput.value_for_config()).c_str());
+
+        ini.SetValue("CAS", "BabaModel", GetIntValue(Instance()->BabaNeuralModel.value_for_config()).c_str());
+        ini.SetValue("CAS", "BabaEdgeResponse",
+                     GetFloatValue(Instance()->BabaNeuralEdgeResponse.value_for_config()).c_str());
+        ini.SetValue("CAS", "BabaDebugView", GetIntValue(Instance()->BabaNeuralDebugView.value_for_config()).c_str());
+        ini.SetValue("CAS", "OptiSharpenModel", GetIntValue(Instance()->OptiSharpenModel.value_for_config()).c_str());
+        ini.SetValue("CAS", "OptiSharpenDebugView",
+                     GetIntValue(Instance()->OptiSharpenDebugView.value_for_config()).c_str());
 
         ini.SetValue("CAS", "SharpenerDebug",
                      GetBoolValue(Instance()->MotionSharpnessDebug.value_for_config()).c_str());
