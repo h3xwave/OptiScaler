@@ -15,6 +15,7 @@ TR_MENU = {
     "Flip the HUDless texture\nGames can also request it with the Opti.Hudless.Flip parameter": (
         "上下翻转无界面纹理\n游戏也可通过 Opti.Hudless.Flip 参数请求翻转", "Flip HUDless tooltip"),
     "Driver pacing: %s, %uX": ("驱动节拍：%s，%u 倍", "Driver flip metering status"),
+    "Driver pacing: %s": ("驱动节拍：%s", "Driver flip metering status (new format)"),
     "frame index mode": ("帧索引模式", "AMD flip metering mode"),
     "adaptive mode": ("自适应模式", "AMD flip metering mode"),
     "AMD driver flip metering holds the flips of the generated frames\n"
