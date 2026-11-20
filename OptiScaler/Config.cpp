@@ -11,6 +11,9 @@
 
 static CSimpleIniA ini;
 
+// Plugins can read and write the ini from their own threads
+static std::recursive_mutex iniMutex;
+
 static inline int64_t GetTicks()
 {
     LARGE_INTEGER ticks;
@@ -47,6 +50,8 @@ Config::Config()
 
 bool Config::Reload(std::filesystem::path iniPath)
 {
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
     auto pathWStr = iniPath.wstring();
 
     LOG_INFO("Trying to load ini from: {0}", wstring_to_string(pathWStr));
@@ -329,7 +334,7 @@ bool Config::Reload(std::filesystem::path iniPath)
             else if (FsrNonLinearSRGB.has_value() && FsrNonLinearSRGB.value())
                 FsrNonLinearPQ.reset();
 
-            if (FsrNonLinearPQ.has_value() || FsrNonLinearSRGB.has_value())
+            if (FsrNonLinearPQ.value_or_default() || FsrNonLinearSRGB.value_or_default())
                 FsrNonLinearColorSpace.set_volatile_value(true);
         }
 
@@ -550,7 +555,7 @@ bool Config::Reload(std::filesystem::path iniPath)
 
             ContrastEnabled.set_from_config(readBool("CAS", "ContrastEnabled"));
             if (auto setting = readFloat("CAS", "Contrast"); setting.has_value())
-                Contrast.set_from_config(std::clamp(setting.value(), -2.0f, 2.0f));
+                Contrast.set_from_config(std::clamp(setting.value(), 0.0f, 2.0f));
 
             DADepthScale.set_from_config(readFloat("CAS", "DADepthScale"));
             DADepthBias.set_from_config(readFloat("CAS", "DADepthBias"));
@@ -641,8 +646,8 @@ bool Config::Reload(std::filesystem::path iniPath)
                 AnisotropyOverride.reset();
 
             AnisotropySkipPointFilter.set_from_config(readBool("Anisotropy", "SkipPointFilter"));
-            AnisotropyModifyComp.set_from_config(readBool("Anisotropy", "AFModifyComparison"));
-            AnisotropyModifyMinMax.set_from_config(readBool("Anisotropy", "AFModifyMinMax"));
+            AnisotropyModifyComp.set_from_config(readBool("Anisotropy", "ModifyComparison"));
+            AnisotropyModifyMinMax.set_from_config(readBool("Anisotropy", "ModifyMinMax"));
         }
 
         // Mipmap
@@ -675,7 +680,8 @@ bool Config::Reload(std::filesystem::path iniPath)
 
             SimulateWaitableObject.set_from_config(readBool("Hotfix", "SimulateWaitableObject"));
 
-            RoundInternalResolution.set_from_config(readInt("Hotfix", "RoundInternalResolution"));
+            if (auto setting = readInt("Hotfix", "RoundInternalResolution"); setting.has_value() && setting > 0)
+                RoundInternalResolution.set_from_config(setting);
 
             RestoreComputeSignature.set_from_config(readBool("Hotfix", "RestoreComputeSignature"));
             RestoreGraphicSignature.set_from_config(readBool("Hotfix", "RestoreGraphicSignature"));
@@ -695,7 +701,7 @@ bool Config::Reload(std::filesystem::path iniPath)
 
         // Dx11 with Dx12
         {
-            Dx11DelayedInit.set_from_config(readInt("Dx11withDx12", "UseDelayedInit"));
+            Dx11DelayedInit.set_from_config(readBool("Dx11withDx12", "UseDelayedInit"));
             DontUseNTShared.set_from_config(readBool("Dx11withDx12", "DontUseNTShared"));
         }
 
@@ -832,9 +838,18 @@ bool Config::Reload(std::filesystem::path iniPath)
             FfxVkFGPath.set_from_config(readWString("Libraries", "FfxVkFGPath"));
 
             XeSSLibrary.set_from_config(readWString("Libraries", "XeSSPath"));
-            XeSSLibrary.set_from_config(readWString("Libraries", "XeFGPath"));
-            XeSSLibrary.set_from_config(readWString("Libraries", "XeLLPath"));
+            XeFGLibrary.set_from_config(readWString("Libraries", "XeFGPath"));
+            XeLLLibrary.set_from_config(readWString("Libraries", "XeLLPath"));
             XeSSDx11Library.set_from_config(readWString("Libraries", "XeSSDx11Path"));
+        }
+
+        // Relative paths are based on Opti's folder
+        for (auto path : { &MainDllPath, &NvngxPath, &NVNGX_DLSS_Library, &DLSSFeaturePath, &NvapiDllPath, &FfxDx12Path,
+                           &FfxDx12SRPath, &FfxDx12FGPath, &FfxDx12RRPath, &FfxDx12RCPath, &FfxVkPath, &FfxVkSRPath,
+                           &FfxVkFGPath, &XeSSLibrary, &XeFGLibrary, &XeLLLibrary, &XeSSDx11Library, &PluginPath })
+        {
+            if (path->has_value() && !path->value().empty() && std::filesystem::path(path->value()).is_relative())
+                path->set_volatile_value((Util::DllPath().parent_path() / path->value()).wstring());
         }
 
         // Reading old configs for compatibility reasons
@@ -859,6 +874,8 @@ bool Config::LoadFromPath(const wchar_t* InPath)
 {
     std::filesystem::path iniPath(InPath);
     auto newPath = iniPath / fileName;
+
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
 
     if (Reload(newPath))
     {
@@ -1208,6 +1225,8 @@ static std::optional<std::string> UnpackOverlayValues(std::string_view data)
 
 std::string Config::ExportOverlaySettings()
 {
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
     WriteOverlaySettings();
 
     std::string data;
@@ -1252,6 +1271,8 @@ bool Config::ImportOverlaySettings(std::string_view code)
 
 bool Config::ApplyOverlaySettings(std::string_view text)
 {
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
     // Known keys only, their values are checked as the ini's are
     std::vector<std::pair<const char*, std::string>> values;
     std::istringstream entries { std::string(text) };
@@ -1299,6 +1320,8 @@ bool Config::ApplyOverlaySettings(std::string_view text)
 
 bool Config::SaveIni()
 {
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
     // Upscalers
     {
         auto SaveUpscaler = [&](const char* key, auto& upscalerSetting)
@@ -2085,12 +2108,46 @@ bool Config::SaveIni()
 
 bool Config::SaveXeFG()
 {
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
     ini.SetValue("XeFG", "DepthInverted", GetBoolValue(Instance()->FGXeFGDepthInverted.value_for_config()).c_str());
     ini.SetValue("XeFG", "JitteredMV", GetBoolValue(Instance()->FGXeFGJitteredMV.value_for_config()).c_str());
     ini.SetValue("XeFG", "HighResMV", GetBoolValue(Instance()->FGXeFGHighResMV.value_for_config()).c_str());
 
     auto pathWStr = absoluteFileName.wstring();
     LOG_INFO("Trying to save ini to: {0}", wstring_to_string(pathWStr));
+
+    return ini.SaveFile(absoluteFileName.wstring().c_str()) >= 0;
+}
+
+std::optional<std::string> Config::GetRawValue(const char* section, const char* key)
+{
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
+    const char* value = ini.GetValue(section, key, nullptr);
+    if (value == nullptr)
+        return std::nullopt;
+
+    return std::string(value);
+}
+
+void Config::SetRawValue(const char* section, const char* key, const char* value)
+{
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+    ini.SetValue(section, key, value);
+}
+
+void Config::DeleteRawValue(const char* section, const char* key)
+{
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+    ini.Delete(section, key, true);
+}
+
+bool Config::SaveRawValues()
+{
+    std::lock_guard<std::recursive_mutex> lock(iniMutex);
+
+    LOG_INFO("Trying to save ini to: {0}", wstring_to_string(absoluteFileName.wstring()));
 
     return ini.SaveFile(absoluteFileName.wstring().c_str()) >= 0;
 }

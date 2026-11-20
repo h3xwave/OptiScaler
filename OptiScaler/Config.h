@@ -46,6 +46,20 @@ template <class T, HasDefaultValue defaultState = WithDefault> class CustomOptio
         std::optional<T>::operator=(value);
     }
 
+    // Prevents the reset from being saved to ini
+    constexpr void reset_volatile()
+    {
+        if (!_volatile)
+        {
+            if (this->has_value())
+                _configIni = this->value();
+            else
+                _configIni = std::nullopt;
+        }
+        _volatile = true;
+        std::optional<T>::reset();
+    }
+
     // Use this when first setting a CustomOptional
     constexpr void set_from_config(const std::optional<T>& opt)
     {
@@ -351,7 +365,7 @@ class Config
     // RCAS
     CustomOptional<bool> RcasEnabled { false };
     CustomOptional<bool> ContrastEnabled { false };
-    CustomOptional<float> Contrast { -0.3f };
+    CustomOptional<float> Contrast { 0.0f };
 
     // DA Sharpening
     CustomOptional<float, NoDefault> DADepthScale;
@@ -788,6 +802,12 @@ class Config
     bool LoadFromPath(const wchar_t* InPath);
     bool SaveIni();
     bool SaveXeFG();
+
+    // Keys that aren't OptiScaler options (plugin settings), kept in the ini as they are
+    std::optional<std::string> GetRawValue(const char* section, const char* key);
+    void SetRawValue(const char* section, const char* key, const char* value);
+    void DeleteRawValue(const char* section, const char* key);
+    bool SaveRawValues();
 
     void CheckUpscalerFiles();
 
