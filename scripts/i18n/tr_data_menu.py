@@ -15,6 +15,7 @@ TR_MENU = {
     "Flip the HUDless texture\nGames can also request it with the Opti.Hudless.Flip parameter": (
         "上下翻转无界面纹理\n游戏也可通过 Opti.Hudless.Flip 参数请求翻转", "Flip HUDless tooltip"),
     "Driver pacing: %s, %uX": ("驱动节拍：%s，%u 倍", "Driver flip metering status"),
+    "Driver pacing: %s": ("驱动节拍：%s", "Driver flip metering status (new format)"),
     "frame index mode": ("帧索引模式", "AMD flip metering mode"),
     "adaptive mode": ("自适应模式", "AMD flip metering mode"),
     "AMD driver flip metering holds the flips of the generated frames\n"
@@ -362,4 +363,26 @@ TR_MENU = {
     "nvngx replacement": ("nvngx 替代库", "Detected capabilities"),
     "nvngx_dlss.dll not found, DLSS disabled!": (
         "未找到 nvngx_dlss.dll，DLSS 已禁用！", "Missing library warning"),
+
+    # Labels introduced by upstream commits after 992f4e19.
+    "Status:": ("状态：", "Upstream 4a8d55a9 localization"),
+    "ON %dx": ("已启用 %d 倍", "Upstream 4a8d55a9 localization"),
+    "(the replacement supports up to %dx)": ("（替代实现最高支持 %d 倍）", "Upstream 4a8d55a9 localization"),
+    "Please select %s Frame Generation in the game options\nYou might need to select %s first": ("请在游戏设置中选择 %s 帧生成\n可能需要先选择 %s", "Upstream 4a8d55a9 localization"),
+    "(turn on Frame Gen below)": ("（请在下方启用帧生成）", "Upstream 4a8d55a9 localization"),
+    "For when the game sends a UI texture, but you want to disable it\nGreyed out while the game doesn't send one": ("游戏发送 UI 纹理，但你希望禁用它时使用\n游戏未发送 UI 纹理时此选项不可用", "Upstream 4a8d55a9 localization"),
+    "Select the sharpening filter to apply.\n\nUpscaler's default: Uses the sharpening provided by the upscaler.\nRCAS: AMD's RCAS, modified for Contrast and MAS.\nDepth Aware: Smarter sharpening with fewer artifacts (heavier).\nNeural (BaBa): Small neural network from the BaBa ReShade shaders. Only changes the luma and\nskips aliased edges and fireflies. 0.5 strength is the default intensity of the ReShade shader.\nOptiSharpen: Small neural network trained for OptiScaler. Only changes the luma, works the same\nfor SDR and HDR. 0.5 strength is the trained strength.\nNeural shaders use RCAS when their shader isn't available for the current API.\n\nBy default uses a sharpening value provided by the game.\nSelect 'Override' under 'Sharpness' and adjust the slider to change it.": ("选择要应用的锐化滤镜。\n\n超分默认：使用超分算法提供的锐化。\nRCAS：AMD 的 RCAS，针对对比度和 MAS 进行了调整。\n深度感知：更智能地锐化，伪影更少，但开销较高。\n神经网络（BaBa）：来自 BaBa ReShade 着色器的小型神经网络，只调整亮度，\n并跳过锯齿边缘与亮点；0.5 是该 ReShade 着色器的默认强度。\nOptiSharpen：为 OptiScaler 训练的小型神经网络，只调整亮度，\n在 SDR 和 HDR 下工作方式相同；0.5 是训练时的强度。\n当前图形 API 不支持神经网络着色器时，会回退到 RCAS。\n\n默认使用游戏提供的锐化值。\n在“锐度”下选择“覆盖”，然后调整滑块以更改强度。", "Upstream 4a8d55a9 localization"),
+    "Clamps the final image to the [0, 1] range.\n\nPrevents overshoot artifacts such as bright halos or negative colors.\nRecommended for LDR pipelines; optional for HDR depending on tone-mapping.\n\nOff when not set, games that report SDR can still send HDR color": ("将最终图像限制在 [0, 1] 范围内。\n\n防止亮边光晕或负颜色值等过冲伪影。\n推荐用于 LDR 渲染；HDR 是否需要取决于色调映射。\n\n默认关闭；即使游戏报告 SDR，也可能发送 HDR 颜色。", "Upstream 4a8d55a9 localization"),
+    "Neural Sharpening Parameters": ("神经网络锐化参数", "Upstream 4a8d55a9 localization"),
+    "Neural Model": ("神经网络模型", "Upstream 4a8d55a9 localization"),
+    "Model A: Standard sharpening.\nModel B: Edge-enhanced.": ("模型 A：标准锐化。\n模型 B：边缘增强。", "Upstream 4a8d55a9 localization"),
+    "Edge Response": ("边缘响应", "Upstream 4a8d55a9 localization"),
+    "Controls how the sharpening adapts to the detected edges.\n\nNegative values smooth the edges.\nPositive values enhance the edges.\n0 is uniform.": ("控制锐化如何根据检测到的边缘调整。\n\n负值会平滑边缘。\n正值会增强边缘。\n0 表示均匀处理。", "Upstream 4a8d55a9 localization"),
+    "Normal: The final image.\nSharpening map: The sharpening that gets applied, plain gray means no change.\nResidual map: Where the network wants to change the image.": ("正常：最终图像。\n锐化图：实际应用的锐化；纯灰色表示无变化。\n残差图：神经网络希望修改图像的区域。", "Upstream 4a8d55a9 localization"),
+    "Reset Neural Values": ("重置神经网络参数", "Upstream 4a8d55a9 localization"),
+    "OptiSharpen Parameters": ("OptiSharpen 参数", "Upstream 4a8d55a9 localization"),
+    "Model": ("模型", "Upstream 4a8d55a9 localization"),
+    "Clean: The first 3x3 model.\nTAA: Model trained for TAA / upscaler output.\nTAA Wide: TAA model with a wider 13 tap window.\nTAA Wide 12 (default): TAA Wide with a larger network (12 hidden units).\nPunch 10: Stronger TAA Wide 12, allowed to overshoot the local range a little.\nPunch 15: Stronger than Punch 10, overshoots a bit more.": ("Clean：首个 3x3 模型。\nTAA：针对 TAA 或超分输出训练的模型。\nTAA Wide：采用更宽的 13 次采样窗口的 TAA 模型。\nTAA Wide 12（默认）：使用更大网络的 TAA Wide（12 个隐藏单元）。\nPunch 10：强于 TAA Wide 12，允许略微超出局部范围。\nPunch 15：强于 Punch 10，允许更多过冲。", "Upstream 4a8d55a9 localization"),
+    "Normal: The final image.\nSharpening map: The relative luma change, plain gray means no change.\nChange magnitude: How much each pixel changes, black means no change.": ("正常：最终图像。\n锐化图：相对亮度变化；纯灰色表示无变化。\n变化幅度：每个像素的变化量；黑色表示无变化。", "Upstream 4a8d55a9 localization"),
+    "Reset OptiSharpen Values": ("重置 OptiSharpen 参数", "Upstream 4a8d55a9 localization"),
 }

@@ -29,6 +29,9 @@ inline constexpr CString FSR_ViewSpaceToMetersFactor = "FSR.viewSpaceToMetersFac
 inline constexpr CString FSR_TransparencyAndComp = "FSR.transparencyAndComposition";
 inline constexpr CString FSR_Reactive = "FSR.reactive";
 
+// D3D12_RESOURCE_STATES the depth input is in, 0 when unknown
+inline constexpr CString DepthState = "OptiScaler.DepthState";
+
 } // namespace OptiKeys
 
 template <typename T> struct EnumConfig;
@@ -94,7 +97,9 @@ enum class SharpenShader
 {
     RCAS,
     DepthAware,
-    LocalContrastDepthAware
+    LocalContrastDepthAware,
+    BabaNeural,
+    OptiSharpen
 };
 
 template <> struct EnumConfig<SharpenShader>
@@ -104,7 +109,9 @@ template <> struct EnumConfig<SharpenShader>
     static constexpr std::pair<SharpenShader, std::string_view> mapping[] = { { SharpenShader::RCAS, "rcas" },
                                                                               { SharpenShader::DepthAware, "da" },
                                                                               { SharpenShader::LocalContrastDepthAware,
-                                                                                "lcda" } };
+                                                                                "lcda" },
+                                                                              { SharpenShader::BabaNeural, "baba" },
+                                                                              { SharpenShader::OptiSharpen, "opti" } };
 };
 
 enum class FSR4Support : uint8_t
