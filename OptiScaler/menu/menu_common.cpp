@@ -6043,9 +6043,10 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             // While no frames are generated the FG status already says it's off
             if (status.metering)
             {
-                ImGui::TextColored(StatusOk(), Tr::Translate("Driver pacing: %s"),
-                                   Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode"
-                                                                                 : "adaptive mode"));
+                const char* pacingMode = "adaptive mode";
+                if (status.mode == AmdExtFlipMeterMode_FrameIndex)
+                    pacingMode = "frame index mode";
+                ImGui::TextColored(StatusOk(), Tr::Translate("Driver pacing: %s"), Tr::Translate(pacingMode));
                 ShowTooltip("AMD driver flip metering holds the flips of the generated frames\n"
                             "Adaptive mode is FSR's and paces one generated frame,\n"
                             "frame index mode paces more");
