@@ -13,18 +13,65 @@ void RCAS_Common::FillMotionConstants(InternalConstants& OutConstants, const Rca
     OutConstants.MvScaleX = InConstants.MvScaleX;
     OutConstants.MvScaleY = InConstants.MvScaleY;
 
-    OutConstants.DisplaySizeMV = OutConstants.MotionWidth == OutConstants.OutputWidth ? 1 : 0;
+    OutConstants.DisplaySizeMV =
+        (OutConstants.MotionWidth == OutConstants.OutputWidth && OutConstants.MotionHeight == OutConstants.OutputHeight)
+            ? 1
+            : 0;
 
     OutConstants.DynamicSharpenEnabled = Config::Instance()->MotionSharpnessEnabled.value_or_default() ? 1 : 0;
     OutConstants.MotionSharpness = Config::Instance()->MotionSharpness.value_or_default();
     OutConstants.Debug = Config::Instance()->MotionSharpnessDebug.value_or_default() ? 1 : 0;
     OutConstants.Threshold = Config::Instance()->MotionThreshold.value_or_default();
     OutConstants.ScaleLimit = Config::Instance()->MotionScaleLimit.value_or_default();
+}
 
-    if (OutConstants.DisplaySizeMV)
-        OutConstants.MotionTextureScale = 1.0f;
-    else
-        OutConstants.MotionTextureScale = (float) OutConstants.MotionWidth / (float) OutConstants.OutputWidth;
+int RCAS_Common::OptiModelSetting()
+{
+    return std::clamp(Config::Instance()->OptiSharpenModel.value_or_default(), 0, 3);
+}
+
+OptiPrecision RCAS_Common::GetOptiPrecision(int InModel, bool InDx11)
+{
+    if (InDx11 || InModel < 2)
+        return OptiPrecision::Fp32;
+
+    return OptiPrecision::Fp16Packed;
+}
+
+const char* RCAS_Common::OptiPrecisionName(OptiPrecision InPrecision)
+{
+    return InPrecision == OptiPrecision::Fp16Packed ? "fp16 packed" : "fp32";
+}
+
+void RCAS_Common::SetTimedShader(SharpenShader InShader, OptiPrecision InPrecision)
+{
+    // Same names as the Method combo of the menu
+    const char* name = "RCAS";
+
+    switch (InShader)
+    {
+    case SharpenShader::DepthAware:
+        name = "Depth Aware (RCAS)";
+        break;
+    case SharpenShader::DepthAwareDAS:
+        name = "Depth Aware (DAS)";
+        break;
+    case SharpenShader::BabaNeural:
+        name = "Neural (BaBa)";
+        break;
+    case SharpenShader::OptiSharpen:
+    {
+        // The variant is part of the name, timings are compared between them
+        static const char* names[] = { "OptiSharpen (fp32)", "OptiSharpen (fp16 packed)" };
+        static_assert(std::size(names) == (size_t) OptiPrecision::Count);
+        name = names[(size_t) InPrecision];
+        break;
+    }
+    default:
+        break;
+    }
+
+    _timedShaderName = name;
 }
 
 void RCAS_Common::FillMotionConstants(InternalConstantsDA& OutConstants, const RcasConstants& InConstants)
@@ -51,12 +98,52 @@ void RCAS_Common::FillMotionConstants(InternalConstantsDA& OutConstants, const R
     OutConstants.DepthLinearC = InConstants.CameraFar - InConstants.CameraNear;
 
     OutConstants.DepthTextureScale = (float) OutConstants.DepthWidth / (float) OutConstants.OutputWidth;
-    OutConstants.ClampOutput = Config::Instance()->DAClampOutput.value_or(InConstants.IsHdr) ? 0 : 1;
+    // Off by default, games flagged SDR can still feed pre-tonemap HDR color (Witcher 3)
+    OutConstants.ClampOutput = Config::Instance()->DAClampOutput.value_or(false) ? 1 : 0;
 
-    OutConstants.DisplaySizeMV = OutConstants.MotionWidth == OutConstants.OutputWidth ? 1 : 0;
+    OutConstants.DisplaySizeMV =
+        (OutConstants.MotionWidth == OutConstants.OutputWidth && OutConstants.MotionHeight == OutConstants.OutputHeight)
+            ? 1
+            : 0;
+}
 
-    if (OutConstants.DisplaySizeMV)
-        OutConstants.MotionTextureScale = 1.0f;
+void RCAS_Common::FillMotionConstants(InternalConstantsBaba& OutConstants, const RcasConstants& InConstants,
+                                      SharpenShader InShader)
+{
+    // Same mapping as the depth aware shaders, 0.5 strength is the 1.0 Intensity of the ReShade shader
+    // and the trained strength of OptiSharpen
+    OutConstants.Sharpness = InConstants.Sharpness * 2.0f;
+
+    if (InShader == SharpenShader::OptiSharpen)
+    {
+        // Natural / Crisp, the pipeline is the precision
+        OutConstants.Model = _optiModel & 1;
+        OutConstants.ViewMode = Config::Instance()->OptiSharpenDebugView.value_or_default();
+    }
     else
-        OutConstants.MotionTextureScale = (float) OutConstants.MotionWidth / (float) OutConstants.OutputWidth;
+    {
+        OutConstants.EdgeResponse = Config::Instance()->BabaNeuralEdgeResponse.value_or_default();
+        OutConstants.Model = Config::Instance()->BabaNeuralModel.value_or_default();
+        OutConstants.ViewMode = Config::Instance()->BabaNeuralDebugView.value_or_default();
+    }
+
+    OutConstants.ClampOutput = Config::Instance()->DAClampOutput.value_or(false) ? 1 : 0;
+    OutConstants.IsHdr = InConstants.IsHdr ? 1 : 0;
+
+    OutConstants.MvScaleX = InConstants.MvScaleX;
+    OutConstants.MvScaleY = InConstants.MvScaleY;
+
+    OutConstants.DynamicSharpenEnabled = (Config::Instance()->MotionSharpnessEnabled.value_or_default() &&
+                                          OutConstants.MotionWidth > 0 && OutConstants.MotionHeight > 0)
+                                             ? 1
+                                             : 0;
+    OutConstants.Debug = Config::Instance()->MotionSharpnessDebug.value_or_default() ? 1 : 0;
+    OutConstants.MotionSharpness = Config::Instance()->MotionSharpness.value_or_default();
+    OutConstants.MotionThreshold = Config::Instance()->MotionThreshold.value_or_default();
+    OutConstants.MotionScaleLimit = Config::Instance()->MotionScaleLimit.value_or_default();
+
+    OutConstants.DisplaySizeMV =
+        (OutConstants.MotionWidth == OutConstants.OutputWidth && OutConstants.MotionHeight == OutConstants.OutputHeight)
+            ? 1
+            : 0;
 }

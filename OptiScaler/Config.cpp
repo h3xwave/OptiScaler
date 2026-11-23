@@ -75,7 +75,7 @@ bool Config::Reload(std::filesystem::path iniPath)
                     upscaler.set_from_config(value);
             };
 
-            readUpscaler("Dx11Upscaler", CodeToUpscaler, Dx11Upscaler, CustomUpscalerDx11);
+            readUpscaler("Dx11Upscaler", CodeToEnum<Upscaler>, Dx11Upscaler, CustomUpscalerDx11);
             readUpscaler("Dx12Upscaler", CodeToUpscalerFfx, Dx12Upscaler, CustomUpscaler);
             readUpscaler("VulkanUpscaler", CodeToUpscalerFfx, VulkanUpscaler, CustomUpscalerVk);
 
@@ -107,21 +107,11 @@ bool Config::Reload(std::filesystem::path iniPath)
             if (auto FGNvngxReplacementString = readString("FrameGen", "FGNvngxReplacement");
                 canUseNvngxReplacement && FGNvngxReplacementString.has_value())
             {
-                if (lstrcmpiA(FGNvngxReplacementString.value().c_str(), "none") == 0)
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::None);
-                else if (lstrcmpiA(FGNvngxReplacementString.value().c_str(), "nukems") == 0)
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::Nukems);
-                else if (lstrcmpiA(FGNvngxReplacementString.value().c_str(), "arturs") == 0)
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::Arturs);
-                else if (lstrcmpiA(FGNvngxReplacementString.value().c_str(), "ffx") == 0)
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::FFX);
-                else if (lstrcmpiA(FGNvngxReplacementString.value().c_str(), "combo") == 0)
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::Combo);
-                else
-                {
-                    FGNvngxReplacement.set_from_config(FGNvngxReplacement::Custom);
+                auto replacement = CodeToEnum<enum FGNvngxReplacement>(FGNvngxReplacementString.value());
+                FGNvngxReplacement.set_from_config(replacement);
+
+                if (replacement == FGNvngxReplacement::Custom)
                     State::Instance().fgNvngxCustom = FGNvngxReplacementString.value();
-                }
             }
 
             if (auto forceXell = readBool("fakenvapi", "ForceXeLL"); forceXell.has_value() && forceXell.value())
@@ -448,7 +438,10 @@ bool Config::Reload(std::filesystem::path iniPath)
 
             NvngxFGDispatchFlags.set_from_config(readUInt("NvngxFG", "DispatchFlags"));
             NvngxFGShowDebug.set_from_config(readBool("NvngxFG", "ShowDebug"));
-            NvngxFGDisableHudless.set_from_config(readBool("NvngxFG", "DisableHudless"));
+
+            // Older configs keep it in [NvngxFG], it only applied with DLSSG via Nvngx as FG Input
+            if (FGInput.value_or_default() == FGInput::NvngxFG)
+                FGDisableHudless.set_from_config(readBool("NvngxFG", "DisableHudless"));
         }
 
         // Logging
@@ -581,6 +574,21 @@ bool Config::Reload(std::filesystem::path iniPath)
             DADepthScale.set_from_config(readFloat("CAS", "DADepthScale"));
             DADepthBias.set_from_config(readFloat("CAS", "DADepthBias"));
             DAClampOutput.set_from_config(readBool("CAS", "DAClampOutput"));
+
+            if (auto setting = readInt("CAS", "BabaModel"); setting.has_value())
+                BabaNeuralModel.set_from_config(std::clamp(setting.value(), 0, 1));
+
+            if (auto setting = readFloat("CAS", "BabaEdgeResponse"); setting.has_value())
+                BabaNeuralEdgeResponse.set_from_config(std::clamp(setting.value(), -1.0f, 1.0f));
+
+            if (auto setting = readInt("CAS", "BabaDebugView"); setting.has_value())
+                BabaNeuralDebugView.set_from_config(std::clamp(setting.value(), 0, 2));
+
+            if (auto setting = readInt("CAS", "OptiSharpenModel"); setting.has_value())
+                OptiSharpenModel.set_from_config(std::clamp(setting.value(), 0, 3));
+
+            if (auto setting = readInt("CAS", "OptiSharpenDebugView"); setting.has_value())
+                OptiSharpenDebugView.set_from_config(std::clamp(setting.value(), 0, 2));
 
             MotionSharpnessDebug.set_from_config(readBool("CAS", "SharpenerDebug"));
         }
@@ -1360,7 +1368,7 @@ bool Config::SaveIni()
             }
 
             std::string value = upscaler
-                                    .transform(UpscalerToCode) // Turn enum into string
+                                    .transform(EnumToCode<Upscaler>) // Turn enum into string
                                     .value_or("auto");
 
             ini.SetValue("Upscalers", key, value.c_str());
@@ -1371,7 +1379,7 @@ bool Config::SaveIni()
         SaveUpscaler("VulkanUpscaler", Instance()->VulkanUpscaler, Instance()->CustomUpscalerVk);
 
         if (auto regular = Instance()->RRRegularUpscaler.value_for_config(); regular.has_value())
-            ini.SetValue("Upscalers", "RRUpscaler", UpscalerToCode(regular.value()).c_str());
+            ini.SetValue("Upscalers", "RRUpscaler", EnumToCode(regular.value()).c_str());
         else
             ini.SetValue("Upscalers", "RRUpscaler", Instance()->CustomRRUpscaler.value_for_config_or("auto").c_str());
 
@@ -1396,18 +1404,10 @@ bool Config::SaveIni()
         if (auto FGNvngxReplacementHeld = Instance()->FGNvngxReplacement.value_for_config();
             FGNvngxReplacementHeld.has_value())
         {
-            if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::None)
-                FGNvngxReplacementString = "None";
-            else if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::Nukems)
-                FGNvngxReplacementString = "Nukems";
-            else if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::Arturs)
-                FGNvngxReplacementString = "Arturs";
-            else if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::FFX)
-                FGNvngxReplacementString = "FFX";
-            else if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::Combo)
-                FGNvngxReplacementString = "Combo";
-            else if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::Custom)
+            if (FGNvngxReplacementHeld.value() == FGNvngxReplacement::Custom)
                 FGNvngxReplacementString = State::Instance().fgNvngxCustom;
+            else
+                FGNvngxReplacementString = EnumToCode(FGNvngxReplacementHeld.value());
         }
         ini.SetValue("FrameGen", "FGNvngxReplacement", FGNvngxReplacementString.c_str());
 
@@ -1724,8 +1724,6 @@ bool Config::SaveIni()
         ini.SetValue("NvngxFG", "DispatchFlags",
                      GetIntValue(Instance()->NvngxFGDispatchFlags.value_for_config(), true).c_str());
         ini.SetValue("NvngxFG", "ShowDebug", GetBoolValue(Instance()->NvngxFGShowDebug.value_for_config()).c_str());
-        ini.SetValue("NvngxFG", "DisableHudless",
-                     GetBoolValue(Instance()->NvngxFGDisableHudless.value_for_config()).c_str());
     }
 
     // Sharpness
@@ -1757,6 +1755,14 @@ bool Config::SaveIni()
         ini.SetValue("CAS", "DADepthScale", GetFloatValue(Instance()->DADepthScale.value_for_config()).c_str());
         ini.SetValue("CAS", "DADepthBias", GetFloatValue(Instance()->DADepthBias.value_for_config()).c_str());
         ini.SetValue("CAS", "DAClampOutput", GetBoolValue(Instance()->DAClampOutput.value_for_config()).c_str());
+
+        ini.SetValue("CAS", "BabaModel", GetIntValue(Instance()->BabaNeuralModel.value_for_config()).c_str());
+        ini.SetValue("CAS", "BabaEdgeResponse",
+                     GetFloatValue(Instance()->BabaNeuralEdgeResponse.value_for_config()).c_str());
+        ini.SetValue("CAS", "BabaDebugView", GetIntValue(Instance()->BabaNeuralDebugView.value_for_config()).c_str());
+        ini.SetValue("CAS", "OptiSharpenModel", GetIntValue(Instance()->OptiSharpenModel.value_for_config()).c_str());
+        ini.SetValue("CAS", "OptiSharpenDebugView",
+                     GetIntValue(Instance()->OptiSharpenDebugView.value_for_config()).c_str());
 
         ini.SetValue("CAS", "SharpenerDebug",
                      GetBoolValue(Instance()->MotionSharpnessDebug.value_for_config()).c_str());
