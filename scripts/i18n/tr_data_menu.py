@@ -403,18 +403,26 @@ TR_MENU = {
         "Sharpening map：相对亮度变化，纯灰色表示无变化。\n"
         "Change magnitude：每个像素的变化幅度，黑色表示无变化。", "OptiSharpen debug view tooltip"),
     "ON %dx": ("开启 %d 倍", "Frame generation status"),
-    "Natural D10 (default): Natural sharpening.\n"
+    "Natural D10: Natural sharpening.\n"
     "Crisp D10 p50: Stronger.\n"
     "(fp16 packed): The same networks in half precision, written for packed math.\n"
     "Faster on Dx12 / Vulkan, Dx11 runs them in fp32.\n"
-    "All use a 25 tap (5x5) window and overshoot the local range by up to 15%%.\n"
+    "All use a 25 tap (5x5) window and overshoot the local range by up to 15 percent.\n"
     "Each model scales the strength, the top of the slider is its best point.": (
-        "Natural D10（默认）：自然锐化。\n"
+        "Natural D10：自然锐化。\n"
         "Crisp D10 p50：更强。\n"
         "（fp16 packed）：相同的网络以半精度实现，为打包数学优化。\n"
         "在 Dx12 / Vulkan 上更快，Dx11 以 fp32 运行。\n"
-        "均使用 25 抽头（5x5）窗口，并最多超出局部范围 15%%。\n"
+        "均使用 25 抽头（5x5）窗口，并最多超出局部范围百分之十五。\n"
         "每个模型会缩放强度，滑块顶端即其最佳效果点。", "OptiSharpen model tooltip"),
+    "For when the game sends HUDless, but you want to disable it\n"
+    "Might be required for some sets of DispatchFlags": (
+        "当游戏发送无界面画面而你希望禁用它时使用\n某些 DispatchFlags 组合可能需要此设置", "Nvngx HUDless tooltip"),
+    "For when the game sends HUDless, but you want to disable it\n"
+    "Greyed out while the game doesn't send one": (
+        "当游戏发送无界面画面而你希望禁用它时使用\n游戏未发送无界面画面时该项为灰色", "HUDless tooltip"),
+    "Cutoffs transparency from UI to help with interpolation\n0.0 is auto": (
+        "裁剪 UI 的半透明部分以辅助插帧\n0.0 为自动计算", "Nvngx HUD cutoff tooltip"),
     "OptiSharpen Parameters": ("OptiSharpen 参数", "OptiSharpen settings card"),
     "Please select %s Frame Generation in the game options\n"
     "You might need to select %s first": (

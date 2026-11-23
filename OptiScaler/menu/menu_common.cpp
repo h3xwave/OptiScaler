@@ -5211,10 +5211,12 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                     if (ImGui::Checkbox("Disable HUDless", &disableHudless))
                         config->FGDisableHudless = disableHudless;
 
-                    ShowTooltip(nvngxInput ? "For when the game sends HUDless, but you want to disable it\n"
-                                             "Might be required for some sets of DispatchFlags"
-                                           : "For when the game sends HUDless, but you want to disable it\n"
-                                             "Greyed out while the game doesn't send one");
+                    if (nvngxInput)
+                        ShowTooltip("For when the game sends HUDless, but you want to disable it\n"
+                                    "Might be required for some sets of DispatchFlags");
+                    else
+                        ShowTooltip("For when the game sends HUDless, but you want to disable it\n"
+                                    "Greyed out while the game doesn't send one");
 
                     ImGui::EndDisabled();
                 }
@@ -5369,9 +5371,11 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                     if (ImGui::SliderFloat("Hud Cutoff", &fgHudCutoff, 0.00f, 1.0f, "%.2f"))
                         config->FGHudCutoff = fgHudCutoff;
 
-                    ShowTooltip(nvngxInput ? "Cutoffs transparency from UI to help with interpolation\n0.0 is auto"
-                                           : "Cutoffs transparency from UI to help with interpolation\n"
-                                             "You can use Show Detected UI to see the difference\n0.0 is auto");
+                    if (nvngxInput)
+                        ShowTooltip("Cutoffs transparency from UI to help with interpolation\n0.0 is auto");
+                    else
+                        ShowTooltip("Cutoffs transparency from UI to help with interpolation\n"
+                                    "You can use Show Detected UI to see the difference\n0.0 is auto");
                 }
             }
         }
@@ -7629,11 +7633,11 @@ void MenuCommon::RenderActiveImageSettings(RenderMenuContext& ctx)
                     if (ImGui::Combo("Model", &optiModel, optiModels, IM_ARRAYSIZE(optiModels)))
                         config->OptiSharpenModel = optiModel;
 
-                    ShowTooltip("Natural D10 (default): Natural sharpening.\n"
+                    ShowTooltip("Natural D10: Natural sharpening.\n"
                                 "Crisp D10 p50: Stronger.\n"
                                 "(fp16 packed): The same networks in half precision, written for packed math.\n"
                                 "Faster on Dx12 / Vulkan, Dx11 runs them in fp32.\n"
-                                "All use a 25 tap (5x5) window and overshoot the local range by up to 15%%.\n"
+                                "All use a 25 tap (5x5) window and overshoot the local range by up to 15 percent.\n"
                                 "Each model scales the strength, the top of the slider is its best point.");
 
                     const char* optiViews[] = { "Normal", "Sharpening map", "Change magnitude" };
