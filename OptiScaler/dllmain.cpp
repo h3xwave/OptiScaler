@@ -62,46 +62,6 @@ typedef const char*(CDECL* PFN_wine_get_version)(void);
 typedef void (*PFN_InitializeASI)(void);
 typedef bool (*PFN_PatchResult)(void);
 
-static inline void* ManualGetProcAddress(HMODULE hModule, const char* functionName)
-{
-    if (!hModule)
-        return nullptr;
-
-    // Verify the alignment
-    auto dosHeader = (IMAGE_DOS_HEADER*) hModule;
-    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-        return nullptr;
-
-    auto ntHeaders = (IMAGE_NT_HEADERS*) ((BYTE*) hModule + dosHeader->e_lfanew);
-    if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
-        return nullptr;
-
-    // Look at the export directory
-    IMAGE_DATA_DIRECTORY exportData = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-    if (!exportData.VirtualAddress)
-        return nullptr;
-
-    auto exportDir = (IMAGE_EXPORT_DIRECTORY*) ((BYTE*) hModule + exportData.VirtualAddress);
-
-    DWORD* nameRvas = (DWORD*) ((BYTE*) hModule + exportDir->AddressOfNames);
-    WORD* ordinalTable = (WORD*) ((BYTE*) hModule + exportDir->AddressOfNameOrdinals);
-    DWORD* functionTable = (DWORD*) ((BYTE*) hModule + exportDir->AddressOfFunctions);
-
-    // Iterate over exported names
-    for (DWORD i = 0; i < exportDir->NumberOfNames; ++i)
-    {
-        const char* name = (const char*) hModule + nameRvas[i];
-        if (_stricmp(name, functionName) == 0)
-        {
-            WORD ordinal = ordinalTable[i];
-            DWORD funcRva = functionTable[ordinal];
-            return (BYTE*) hModule + funcRva;
-        }
-    }
-
-    return nullptr; // Not found
-}
-
 static bool IsRunningOnWine()
 {
     LOG_FUNC();
@@ -210,9 +170,16 @@ static void RunAgilityUpgrade(HMODULE dx12Module)
                 pathSet = true;
             }
 
+            auto corePath =
+                std::filesystem::path(Config::Instance()->MainDllPath.value()) / L"D3D12_OptiScaler" / L"D3D12Core.dll";
+
             if (path.empty())
             {
                 LOG_ERROR("Can't upgrade Agility SDK, Opti folder isn't reachable from the exe folder");
+            }
+            else if (std::error_code ec; !std::filesystem::exists(corePath, ec))
+            {
+                LOG_ERROR("Can't upgrade Agility SDK, {} is missing", wstring_to_string(corePath.wstring()));
             }
             else
             {
@@ -495,9 +462,8 @@ static void RunEntryLoads()
 
     LOG_INFO("Loading injected dlls");
 
-    // Special K and ReShade should hook before us, ReShade above our FG swapchain uses freed objects
-    if ((skModule != nullptr || !Config::Instance()->LoadSpecialK.value_or_default()) &&
-        !Config::Instance()->LoadReShade.value_or_default())
+    // So ReShade hooks the factory methods after us, Special K should hook before us
+    if (skModule != nullptr || !Config::Instance()->LoadSpecialK.value_or_default())
         DxgiHooks::HookFactoryMethods();
 
     // Detection fails under the loader lock, nvapi loaded by an injected dll's DllMain would pick fakenvapi
@@ -1364,10 +1330,21 @@ static void CheckWorkingMode()
     if (State::Instance().isWindows10 && !State::Instance().isRunningOnLinux &&
         !Config::Instance()->FsrAgilitySDKUpgrade.has_value())
     {
+        auto corePath =
+            std::filesystem::path(Config::Instance()->MainDllPath.value()) / L"D3D12_OptiScaler" / L"D3D12Core.dll";
+
         if (gameAgilityVersion < customD3D12SDKVersion)
         {
-            LOG_INFO("Enabling AgilitySDKUpgrade");
-            Config::Instance()->FsrAgilitySDKUpgrade.set_volatile_value(true);
+            if (std::error_code ec; std::filesystem::exists(corePath, ec))
+            {
+                LOG_INFO("Enabling AgilitySDKUpgrade");
+                Config::Instance()->FsrAgilitySDKUpgrade.set_volatile_value(true);
+            }
+            else
+            {
+                LOG_WARN("Game's Agility SDK is older than {}, but AgilitySDKUpgrade can't be enabled, {} is missing",
+                         customD3D12SDKVersion, wstring_to_string(corePath.wstring()));
+            }
         }
     }
 
@@ -1467,6 +1444,9 @@ static void printQuirks(flag_set<GameQuirk>& quirks)
 
     if (quirks & GameQuirk::ExtendedSearch)
         stringQuirks.push_back("Extended DLL search");
+
+    if (quirks & GameQuirk::PadToMaxUpscaleSize)
+        stringQuirks.push_back("Keep DLSS/XeSS at the max FFX upscale size");
 
     state->detectedQuirks.append_range(stringQuirks);
     for (auto& stringQuirk : stringQuirks)
@@ -1882,6 +1862,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                      std::string_view(desc) == std::string_view("DXVK_NVAPI")))
                 {
                     spdlog::debug("Using dxvk-nvapi");
+
+                    // Display devices only list GPUs with a display attached, which misses PRIME offload GPUs,
+                    // but the call also makes Wine refresh the GPU list in the registry
                     DISPLAY_DEVICEA dd = {};
                     dd.cb = sizeof(dd);
                     int deviceIndex = 0;
@@ -1894,6 +1877,60 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                             nvidiaDetected = true;
                         }
                         deviceIndex++;
+                    }
+
+                    // Wine registers every GPU here and removes the ones that are gone
+                    // Windows keeps removed GPUs here too, so it's only used on Wine
+                    HKEY pciKey = nullptr;
+                    if (!nvidiaDetected && State::Instance().isRunningOnLinux &&
+                        RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"System\\CurrentControlSet\\Enum\\PCI", 0, KEY_READ,
+                                      &pciKey) == ERROR_SUCCESS)
+                    {
+                        wchar_t deviceName[256];
+
+                        for (DWORD i = 0; !nvidiaDetected; i++)
+                        {
+                            DWORD deviceNameLength = std::size(deviceName);
+                            if (RegEnumKeyExW(pciKey, i, deviceName, &deviceNameLength, nullptr, nullptr, nullptr,
+                                              nullptr) != ERROR_SUCCESS)
+                            {
+                                break;
+                            }
+
+                            if (!std::wstring_view(deviceName).starts_with(L"VEN_10DE"))
+                                continue;
+
+                            HKEY deviceKey = nullptr;
+                            if (RegOpenKeyExW(pciKey, deviceName, 0, KEY_READ, &deviceKey) != ERROR_SUCCESS)
+                                continue;
+
+                            wchar_t instanceName[256];
+
+                            for (DWORD j = 0; !nvidiaDetected; j++)
+                            {
+                                DWORD instanceNameLength = std::size(instanceName);
+                                if (RegEnumKeyExW(deviceKey, j, instanceName, &instanceNameLength, nullptr, nullptr,
+                                                  nullptr, nullptr) != ERROR_SUCCESS)
+                                {
+                                    break;
+                                }
+
+                                // Skip non display devices like the HDMI audio
+                                wchar_t classGuid[64];
+                                DWORD classGuidSize = sizeof(classGuid);
+                                if (RegGetValueW(deviceKey, instanceName, L"ClassGUID", RRF_RT_REG_SZ, nullptr,
+                                                 classGuid, &classGuidSize) == ERROR_SUCCESS &&
+                                    _wcsicmp(classGuid, L"{4d36e968-e325-11ce-bfc1-08002be10318}") == 0)
+                                {
+                                    spdlog::debug("Nvidia GPU found: {}", wstring_to_string(deviceName));
+                                    nvidiaDetected = true;
+                                }
+                            }
+
+                            RegCloseKey(deviceKey);
+                        }
+
+                        RegCloseKey(pciKey);
                     }
                 }
                 else if (o_NvAPI_QueryInterface(0x21382138))

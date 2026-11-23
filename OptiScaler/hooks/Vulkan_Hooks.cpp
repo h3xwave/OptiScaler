@@ -8,6 +8,7 @@
 
 #include <menu/menu_overlay_vk.h>
 #include <menu/menu_common.h>
+#include <imgui/ImGuiNotify.hpp>
 #include <proxies/KernelBase_Proxy.h>
 #include <upscalers/IFeature_Vk.h>
 #include <framegen/ffx/FSRFG_Vk.h>
@@ -386,7 +387,19 @@ static IFGFeature_Vk* CreateFGFeature()
     }
     else if (state.activeFgOutput == FGOutput::DLSSG)
     {
-        if (StreamlineProxy::InitWithVulkan())
+        if (!StreamlineProxy::LoadStreamline())
+        {
+            ImGui::InsertNotification(
+                { ImGuiToastType::Error, 20000, "Can't init DLSSG Output\nAre you missing the streamline folder?" });
+
+            LOG_ERROR("Can't load Streamline, disabling FGOutput");
+            Config::Instance()->FGOutput.set_volatile_value(FGOutput::NoFG);
+            state.activeFgOutput = Config::Instance()->FGOutput.value_or_default();
+
+            Config::Instance()->FGNvngxReplacement.set_volatile_value(FGNvngxReplacement::None);
+            state.activeFgNvngx = Config::Instance()->FGNvngxReplacement.value_or_default();
+        }
+        else if (StreamlineProxy::InitWithVulkan())
             state.currentVkFG = new DLSSG_Vk();
         else
             LOG_ERROR("Can't init Streamline, DLSSG won't be available");
@@ -593,7 +606,10 @@ static VkResult hkvkCreateInstance(const VkInstanceCreateInfo* pCreateInfo, cons
     VkResult result;
     {
         ScopedSkipSpoofingGlobal skipSpoofingGlobal {};
+        const bool previousCreatingInstance = State::Instance().creatingVulkanInstance;
+        State::Instance().creatingVulkanInstance = true;
         result = o_vkCreateInstance(&localCreateInfo, pAllocator, pInstance);
+        State::Instance().creatingVulkanInstance = previousCreatingInstance;
     }
 
     // OptiScaler's own Streamline only makes short lived ones
@@ -658,6 +674,9 @@ static void hkvkDestroyDevice(VkDevice device, const VkAllocationCallbacks* pAll
 
         if (device == _fifoLatestReadyDevice)
             _fifoLatestReadyDevice = VK_NULL_HANDLE;
+
+        if (device == _device)
+            _device = VK_NULL_HANDLE;
 
         ReflexHooks::deviceDestroyed(device);
         InputCommon::vk_device_destroyed(device);
@@ -940,6 +959,10 @@ static VkResult hkvkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPres
     {
         auto& state = State::Instance();
         state.fgLastFrame++;
+
+        // Nvngx input frames are counted at the game's DLSSG evaluate
+        if (state.activeFgInput != FGInput::NvngxFG)
+            state.gameFrameRate.Present(Util::MillisecondsNow());
 
         static double lastPresentTime = 0.0;
         auto now = Util::MillisecondsNow();
@@ -1226,6 +1249,21 @@ static VkResult hkvkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapch
         fg != nullptr && fg->OwnsSwapchain(swapchain) && !FromFGOutput(_ReturnAddress()))
     {
         ScopedFGCall fgCall {};
+
+        // A count above the swapchain's is legal, Streamline's proxy swapchain then
+        // leaves null images in the array and the game's vkCreateImageView crashes the driver
+        if (pSwapchainImages != nullptr && pSwapchainImageCount != nullptr)
+        {
+            uint32_t available = 0;
+
+            if (fg->GetSwapchainImages(device, swapchain, &available, nullptr) == VK_SUCCESS &&
+                *pSwapchainImageCount > available)
+            {
+                LOG_DEBUG("Clamping the requested swapchain image count {} to {}", *pSwapchainImageCount, available);
+                *pSwapchainImageCount = available;
+            }
+        }
+
         auto result = fg->GetSwapchainImages(device, swapchain, pSwapchainImageCount, pSwapchainImages);
 
         if (result == VK_SUCCESS && pSwapchainImages != nullptr)
@@ -1453,6 +1491,10 @@ HWND VulkanHooks::SurfaceWindow(VkSurfaceKHR surface)
 // A promoted core function is missing on a device that only has its extension (RDR2's vkGetSemaphoreCounterValue and
 // vkCmdPushDescriptorSetWithTemplate are null), the extension's name then gives the same function. FFX and OptiScaler
 // ask for the core names.
+VkDevice VulkanHooks::GameDevice() { return _device; }
+
+VkPhysicalDevice VulkanHooks::GamePhysicalDevice() { return _device != VK_NULL_HANDLE ? _PD : VK_NULL_HANDLE; }
+
 PFN_vkVoidFunction VulkanHooks::GetDeviceProcAddr(VkDevice device, const char* pName)
 {
     auto getProc = o_vkGetDeviceProcAddr != nullptr ? o_vkGetDeviceProcAddr : vkGetDeviceProcAddr;

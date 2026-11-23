@@ -231,6 +231,13 @@ const std::vector<GameConfig> gameConfigs = {
         .defaults = { UseNtdllHooks = false, FGPreserveSwapChain = false },
     },
 
+    // Jade Dynasty / Zhuxian
+    // Kernel hooks required to unlock DLSS inputs
+    {
+        .ueExes = { "zhuxianclient" },
+        .defaults = { UseNtdllHooks = false },
+    },
+
     // Zenless Zone Zero
     // IgnoreTagsWithoutHudlessForFG fixes flipped Unity MVs/Depth
     {
@@ -889,6 +896,15 @@ const std::vector<GameConfig> gameConfigs = {
         .exes = { "doomthedarkages.exe" },
         .defaults = { DxgiSpoofing = false },
         .quirks = { ForceCreateD3D12Device },
+    },
+
+    // Split Fiction
+    // Changes FFX upscaleSize with the split screen, recreating DLSS/XeSS for each change stutters
+    // Dxgi spoofing disabled
+    {
+        .exes = { "splitfiction.exe" },
+        .defaults = { DxgiSpoofing = false },
+        .quirks = { PadToMaxUpscaleSize },
     },
 
 };

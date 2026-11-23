@@ -106,6 +106,9 @@ class IFeature
     std::unordered_set<std::pair<float, float>, hashFunction> _jitterInfo;
 
   protected:
+    // Name of the custom provider it runs, empty for the regular ones
+    std::string _customName;
+
     // D3D11with12
     inline static ID3D12Device* _dx11on12Device = nullptr;
     inline static ID3D12Device* _localDx11on12Device = nullptr;
@@ -126,6 +129,11 @@ class IFeature
 
     std::array<Subrect, (size_t) SubrectSlot::Count> _subrects {};
     bool _outputSubrects = false;
+
+    // PadToMaxUpscaleSize quirk, the upscaler stays at the max upscale size and the render size created with it
+    bool _padToMaxUpscaleSize = false;
+    unsigned int _maxRenderWidth = 0;
+    unsigned int _maxRenderHeight = 0;
     uint32_t _subrectLogged = 0; // Bit per slot, log once per feature
     uint32_t _subrectWarned = 0;
     bool _integerMaskWarned = false;
@@ -173,7 +181,10 @@ class IFeature
     virtual Upscaler GetUpscalerType() const = 0;
     virtual API Api() const = 0;
     std::string Name() const { return UpscalerDisplayName(GetUpscalerType()); };
-    std::string ShortName() const { return UpscalerShortName(GetUpscalerType()); }; // Without the version
+    // Without the version, a custom provider's name instead of the upscaler it runs as
+    std::string ShortName() const { return _customName.empty() ? UpscalerShortName(GetUpscalerType()) : _customName; };
+    const std::string& CustomName() const { return _customName; }
+    void SetCustomName(const std::string& name) { _customName = name; }
     virtual std::optional<double> ReadUpscalerTime(void* commandQueue) { return std::nullopt; }
     virtual void ReadDetailedGpuTimes(void* commandQueue, std::vector<DetailedGpuTime>& detailedGpuTimes) {};
 
@@ -182,6 +193,8 @@ class IFeature
     virtual void TickFrozenCheck(uint32_t presentPerEval = 1);
     virtual bool IsFrozen() { return _featureFrozen; };
     virtual bool UpdateOutputResolution(const NVSDK_NGX_Parameter* InParameters);
+    // Smaller FFX upscale sizes are padded to the max one, without recreating the upscaler
+    bool PadsToMaxUpscaleSize() const { return _padToMaxUpscaleSize; }
     virtual unsigned int DisplayWidth() { return _displayWidth; };
     virtual unsigned int DisplayHeight() { return _displayHeight; };
     virtual unsigned int TargetWidth() { return _targetWidth; };

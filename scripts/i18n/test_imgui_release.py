@@ -109,6 +109,15 @@ int main(int argc, char** argv)
         });
         const char* fgTip = "Can be used with any FG Output\n\nRequires enabling FSR-FG in game settings\nSupports HUDless out of the box";
         CheckText(fgTip, [&] { ImGui::TextUnformatted(fgTip); });
+        const char* fgTips[] = {
+            "For when the game sends HUDless, but you want to disable it\n"
+            "Might be required for some sets of DispatchFlags",
+            "For when the game sends HUDless, but you want to disable it\n"
+            "Greyed out while the game doesn't send one",
+            "Cutoffs transparency from UI to help with interpolation\n0.0 is auto",
+        };
+        for (const char* tip : fgTips)
+            CheckText(tip, [tip] { ImGui::TextUnformatted(tip); });
         CheckText("Menu", [] { ImGui::Text("Menu"); });
 
         SetTranslationActiveForTest(false);
@@ -120,7 +129,7 @@ int main(int argc, char** argv)
         ImGui::End();
         ImGui::Render();
         ImGui::DestroyContext();
-        std::cout << "PASS: 20 rendered-text checks and inactive fallback under /O2 /GL /LTCG\n";
+        std::cout << "PASS: 23 rendered-text checks and inactive fallback under /O2 /GL /LTCG\n";
         return 0;
     }
     catch (const std::exception& error)

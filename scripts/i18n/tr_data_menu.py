@@ -362,4 +362,123 @@ TR_MENU = {
     "nvngx replacement": ("nvngx 替代库", "Detected capabilities"),
     "nvngx_dlss.dll not found, DLSS disabled!": (
         "未找到 nvngx_dlss.dll，DLSS 已禁用！", "Missing library warning"),
+    # Upstream sync through f005b3db: OptiSharpen, flip meter diagnostics and new status text.
+    "(the replacement supports up to %dx)": (
+        "（该替代方案最高支持 %d 倍）", "FG replacement multiplier warning"),
+    "Clamps the final image to the [0, 1] range.\n\n"
+    "Prevents overshoot artifacts such as bright halos or negative colors.\n"
+    "Recommended for LDR pipelines; optional for HDR depending on tone-mapping.\n\n"
+    "Off when not set, games that report SDR can still send HDR color": (
+        "将最终图像限制在 [0, 1] 范围内。\n\n"
+        "防止亮部光晕或负色等过冲伪影。\n"
+        "推荐用于 LDR 管线；HDR 是否启用取决于色调映射。\n\n"
+        "未设置时关闭；上报 SDR 的游戏仍可能发送 HDR 颜色", "Clamp output tooltip"),
+    "Controls how the sharpening adapts to the detected edges.\n\n"
+    "Negative values smooth the edges.\nPositive values enhance the edges.\n"
+    "0 is uniform.": (
+        "控制锐化如何根据检测到的边缘进行调整。\n\n"
+        "负值会平滑边缘。\n正值会增强边缘。\n0 表示均匀处理。", "Edge response tooltip"),
+    "Driver pacing: %s": ("驱动节拍：%s", "Driver flip metering status"),
+    "Driver pacing: the driver doesn't pace the flips (%08X, status %u)": (
+        "驱动节拍：驱动未对翻转进行节拍控制（%08X，状态 %u）", "Driver flip metering error"),
+    "Edge Response": ("边缘响应", "Neural sharpening edge response"),
+    "For when the game sends a UI texture, but you want to disable it\n"
+    "Greyed out while the game doesn't send one": (
+        "当游戏发送 UI 纹理但你希望禁用时使用\n游戏未发送 UI 纹理时该项为灰色", "Disable UI texture tooltip"),
+    "Model": ("模型", "Sharpener model selector"),
+    "Model A: Standard sharpening.\nModel B: Edge-enhanced.": (
+        "模型 A：标准锐化。\n模型 B：边缘增强。", "Neural model tooltip"),
+    "Neural Model": ("神经模型", "Neural sharpening model label"),
+    "Neural Sharpening Parameters": ("神经锐化参数", "Neural sharpening settings card"),
+    "Normal: The final image.\n"
+    "Sharpening map: The sharpening that gets applied, plain gray means no change.\n"
+    "Residual map: Where the network wants to change the image.": (
+        "Normal：最终图像。\n"
+        "Sharpening map：实际应用的锐化量，纯灰色表示无变化。\n"
+        "Residual map：网络希望改变图像的位置。", "Neural sharpening debug view tooltip"),
+    "Normal: The final image.\n"
+    "Sharpening map: The relative luma change, plain gray means no change.\n"
+    "Change magnitude: How much each pixel changes, black means no change.": (
+        "Normal：最终图像。\n"
+        "Sharpening map：相对亮度变化，纯灰色表示无变化。\n"
+        "Change magnitude：每个像素的变化幅度，黑色表示无变化。", "OptiSharpen debug view tooltip"),
+    "ON %dx": ("开启 %d 倍", "Frame generation status"),
+    "Natural D10: Natural sharpening.\n"
+    "Crisp D10 p50: Stronger.\n"
+    "(fp16 packed): The same networks in half precision, written for packed math.\n"
+    "Faster on Dx12 / Vulkan, Dx11 runs them in fp32.\n"
+    "All use a 25 tap (5x5) window and overshoot the local range by up to 15 percent.\n"
+    "Each model scales the strength, the top of the slider is its best point.": (
+        "Natural D10：自然锐化。\n"
+        "Crisp D10 p50：更强。\n"
+        "（fp16 packed）：相同的网络以半精度实现，为打包数学优化。\n"
+        "在 Dx12 / Vulkan 上更快，Dx11 以 fp32 运行。\n"
+        "均使用 25 抽头（5x5）窗口，并最多超出局部范围百分之十五。\n"
+        "每个模型会缩放强度，滑块顶端即其最佳效果点。", "OptiSharpen model tooltip"),
+    "For when the game sends HUDless, but you want to disable it\n"
+    "Might be required for some sets of DispatchFlags": (
+        "当游戏发送无界面画面而你希望禁用它时使用\n某些 DispatchFlags 组合可能需要此设置", "Nvngx HUDless tooltip"),
+    "For when the game sends HUDless, but you want to disable it\n"
+    "Greyed out while the game doesn't send one": (
+        "当游戏发送无界面画面而你希望禁用它时使用\n游戏未发送无界面画面时该项为灰色", "HUDless tooltip"),
+    "Cutoffs transparency from UI to help with interpolation\n0.0 is auto": (
+        "裁剪 UI 的半透明部分以辅助插帧\n0.0 为自动计算", "Nvngx HUD cutoff tooltip"),
+    "OptiSharpen Parameters": ("OptiSharpen 参数", "OptiSharpen settings card"),
+    "Please select %s Frame Generation in the game options\n"
+    "You might need to select %s first": (
+        "请在游戏选项中选择 %s 帧生成\n你可能需要先选择 %s", "Frame generation input hint"),
+    "Reset Neural Values": ("重置神经锐化数值", "Neural sharpening reset action"),
+    "Reset OptiSharpen Values": ("重置 OptiSharpen 数值", "OptiSharpen reset action"),
+    "Select the sharpening filter to apply.\n\n"
+    "Upscaler's default: Uses the sharpening provided by the upscaler.\n"
+    "RCAS: AMD's RCAS, modified for Contrast and MAS.\n"
+    "Depth Aware: Smarter sharpening with fewer artifacts (heavier).\n"
+    "Neural (BaBa): Small neural network from the BaBa ReShade shaders. Only changes the luma and\n"
+    "skips aliased edges and fireflies. 0.5 strength is the default intensity of the ReShade shader.\n"
+    "OptiSharpen: Small neural network trained for OptiScaler. Only changes the luma, works the same\n"
+    "for SDR and HDR. 0.5 strength is the trained strength.\n"
+    "Neural shaders use RCAS when their shader isn't available for the current API.\n\n"
+    "By default uses a sharpening value provided by the game.\n"
+    "Select 'Override' under 'Sharpness' and adjust the slider to change it.": (
+        "选择要应用的锐化滤镜。\n\n"
+        "Upscaler's default：使用超分辨率算法自带的锐化。\n"
+        "RCAS：AMD 的 RCAS，针对对比度和 MAS 修改。\n"
+        "Depth Aware：更智能的锐化，伪影更少（开销更大）。\n"
+        "Neural (BaBa)：来自 BaBa ReShade 着色器的小型神经网络。仅改变亮度，并\n"
+        "跳过抗锯齿边缘和萤火虫。0.5 强度对应 ReShade 着色器的默认强度。\n"
+        "OptiSharpen：为 OptiScaler 训练的小型神经网络。仅改变亮度，SDR 和 HDR\n"
+        "效果一致。0.5 强度即训练强度。\n"
+        "当前 API 没有对应着色器时，神经锐化会使用 RCAS。\n\n"
+        "默认使用游戏提供的锐化值。\n在“Sharpness”下选择“Override”并调整滑块即可更改。", "Sharpening method tooltip"),
+    "Status 7: the driver's window manager doesn't report the swapchain's window\n"
+    "in its fullscreen state, the window is likely composed by DWM\n"
+    "or shown on an overlay plane": (
+        "状态 7：驱动的窗口管理器未将该交换链窗口报告为全屏状态，窗口可能由 DWM 合成\n"
+        "或显示在叠加平面上", "Flip meter window not eligible tooltip"),
+    "Status 8: a flip came without a flip meter Present, with a target time of 0\n"
+    "or with more generated frames than configured": (
+        "状态 8：翻转未携带可用的节拍信息，目标时间为 0\n或生成的帧数超过配置", "Flip meter no pacing info tooltip"),
+    "Status:": ("状态：", "Frame generation status label"),
+    "The driver doesn't see the game as a fullscreen app flipped straight to the display. "
+    "Try exclusive fullscreen and closing overlays (Discord, Steam, Game Bar, RTSS) and windows on top of the game.": (
+        "驱动未将游戏识别为直接翻转至显示器的全屏应用。请尝试独占全屏，并关闭覆盖层"
+        "（Discord、Steam、Game Bar、RTSS）以及游戏上方的窗口。", "Flip meter window not eligible"),
+    "The driver got flips without usable pacing info.": (
+        "驱动收到的翻转没有可用的节拍信息。", "Flip meter no pacing info"),
+    "The driver has no pacing config for the swapchain.": (
+        "驱动没有该交换链的节拍配置。", "Flip meter retry"),
+    "The driver hasn't reported on the flips yet.": (
+        "驱动尚未报告翻转状态。", "Flip meter default status"),
+    # Upstream f005b3db dropdown items that aren't caught by the static coverage pass.
+    "Model A (standard)": ("模型 A（标准）", "Neural sharpening model"),
+    "Model B (edge-enhanced)": ("模型 B（边缘增强）", "Neural sharpening model"),
+    "Natural D10": ("自然 D10", "OptiSharpen model"),
+    "Crisp D10 p50": ("清晰 D10 p50", "OptiSharpen model"),
+    "Natural D10 (fp16 packed)": ("自然 D10（fp16 打包）", "OptiSharpen model"),
+    "Crisp D10 p50 (fp16 packed)": ("清晰 D10 p50（fp16 打包）", "OptiSharpen model"),
+    "Normal": ("正常", "Debug view mode"),
+    "Sharpening map": ("锐化图", "Debug view mode"),
+    "Residual map": ("残差图", "Debug view mode"),
+    "Change magnitude": ("变化幅度", "Debug view mode"),
+    "Neural (BaBa)": ("神经锐化 (BaBa)", "Sharpening method"),
 }

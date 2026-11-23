@@ -28,6 +28,7 @@
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
 #include <hooks/Vulkan_Hooks.h>
+#include <hooks/LibraryLoad_Hooks.h>
 
 #include <BuildInfo.h>
 #include <version_check.h>
@@ -308,8 +309,22 @@ enum OverlayRow : int
     OverlayRow_COUNT,
 };
 
-static const char* overlayRowKeys[] = { "fps",      "upscale",       "frametime", "frametimegraph",
-                                        "upscaler", "upscalergraph", "lowlatency" };
+template <> struct EnumConfig<OverlayRow>
+{
+    // Unknown keys are skipped
+    static constexpr auto default_value = OverlayRow_COUNT;
+
+    static constexpr std::pair<OverlayRow, std::string_view> mapping[] = {
+        { OverlayRow_Fps, "fps" },
+        { OverlayRow_Upscale, "upscale" },
+        { OverlayRow_FrameTime, "frametime" },
+        { OverlayRow_FrameTimeGraph, "frametimegraph" },
+        { OverlayRow_UpscalerTime, "upscaler" },
+        { OverlayRow_UpscalerTimeGraph, "upscalergraph" },
+        { OverlayRow_LowLatency, "lowlatency" },
+    };
+};
+
 static const char* overlayRowNames[] = {
     "FPS",           "Upscale Ratio",       "Frame Time",         "Frame Time Graph",
     "Upscaler Time", "Upscaler Time Graph", "Low Latency Timings"
@@ -382,11 +397,8 @@ static std::vector<OverlayRowEntry> OverlayRows(FpsOverlay type)
         if (!shown)
             name.remove_prefix(1);
 
-        for (int row = 0; row < OverlayRow_COUNT; row++)
-        {
-            if (name == overlayRowKeys[row] && !listed(row))
-                rows.push_back({ row, shown });
-        }
+        if (const auto row = CodeToEnum<OverlayRow>(name); row != OverlayRow_COUNT && !listed(row))
+            rows.push_back({ row, shown });
     }
 
     for (int row = 0; row < OverlayRow_COUNT; row++)
@@ -403,7 +415,7 @@ static void SetOverlayRows(const std::vector<OverlayRowEntry>& rows)
     std::string keys;
 
     for (const auto& entry : rows)
-        keys += (keys.empty() ? "" : ",") + std::string(entry.shown ? "" : "-") + overlayRowKeys[entry.row];
+        keys += (keys.empty() ? "" : ",") + std::string(entry.shown ? "" : "-") + EnumToCode((OverlayRow) entry.row);
 
     Config::Instance()->FpsOverlayRows = keys;
 }
@@ -1239,17 +1251,21 @@ void MenuCommon::RenderUpscalerCombo(const API api, Upscaler currentUpscaler, co
             State::Instance().newBackend = entry.upscaler;
 
             // Regular and custom entries share an upscaler type, which the backend change check compares,
-            // so a switch between them is marked here
+            // so a switch between them is marked here. A regular entry always clears the custom name, which the
+            // ini would otherwise save in place of it.
             if (auto& customSetting = CustomProviders::NameSetting(api);
-                !selected && entry.custom != customSetting.value_or("") &&
-                (!entry.custom.empty() || CustomProviders::Runs(customSetting.value_or(""), api, entry.upscaler)))
+                !selected && entry.custom != customSetting.value_or(""))
             {
+                const bool typeUnchanged =
+                    !entry.custom.empty() || CustomProviders::Runs(customSetting.value_or(""), api, entry.upscaler);
+
                 if (entry.custom.empty())
                     customSetting.reset();
                 else
                     customSetting = entry.custom;
 
-                MARK_ALL_BACKENDS_CHANGED();
+                if (typeUnchanged)
+                    MARK_ALL_BACKENDS_CHANGED();
             }
         }
 
@@ -2316,6 +2332,8 @@ struct MenuCommon::RenderMenuContext
     double frameRate = 0.0;
     // Current Vulkan FG output rate, kept separate from the long-term history.
     double fgOutputFrameTimeMs = 0.0;
+    // The game's own frame time with an FG input, 0 when it isn't measured
+    double baseFrameTimeMs = 0.0;
     float menuResScale = 1.0f;
     float fpsScale = 1.0f;
     float averageFrameTime = 0.0f;
@@ -2367,6 +2385,9 @@ void MenuCommon::UpdateRenderTiming(RenderMenuContext& ctx)
     }
 
     ctx.fgOutputFrameTimeMs = fgOutputPresentRate.FrameTime(now);
+
+    state.gameFrameRate.SetEnabled(state.activeFgInput != FGInput::NoFG && state.activeFgInput != FGInput::ForceXeLL);
+    ctx.baseFrameTimeMs = state.gameFrameRate.FrameTime(now);
     if (ctx.fgOutputFrameTimeMs > 0.0)
     {
         frameTime = ctx.fgOutputFrameTimeMs;
@@ -2594,6 +2615,19 @@ void MenuCommon::UpdateVersionAndStartupNotifications(RenderMenuContext& ctx)
         }
 
         state.postDone = true;
+    }
+
+    static bool macTypeNoticeShown = false;
+    if (!macTypeNoticeShown && LibraryLoadHooks::macTypeRejections.load(std::memory_order_relaxed) >= 20)
+    {
+        macTypeNoticeShown = true;
+
+        ImGuiToast notification { ImGuiToastType::Warning, 20000 };
+        notification.setTitle("MacType detected");
+        notification.setContent("MacType is known to cause performance issues,\n"
+                                "especially with high polling rate mice.\n"
+                                "Please disable it while playing.");
+        ImGui::InsertNotification(notification);
     }
 
     // Initialize splash timing and select the splash text once per process.
@@ -2965,12 +2999,23 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
                 ImGui::PushFontSize(overlayFontPx);
 
             auto fg = state.CurrentFG();
-            auto fgText =
-                (fg != nullptr && fg->IsActive() && !fg->IsPaused()) ? std::string(fg->Name()) : std::string();
+            std::string fgText;
 
-            const int fakeFramesCount = state.dlssgDetectedInterpolationCount;
+            // Reprojection as the output generates no frames
+            if (fg != nullptr && fg->IsGenerating())
+                fgText = state.activeFgOutput == FGOutput::Reprojection
+                             ? std::string(fg->Name())
+                             : std::format("{} x{}", fg->Name(), fg->GetInterpolatedFrameCount() + 1);
+
+            const int fakeFramesCount = state.DlssgDetectedInterpolationCount();
+
+            // Nvngx/DLSSG paths report generation through the game's DLSSG frame count, not IsGenerating()
+            bool nvngxFgGenerating = false;
+
             auto formatFg = [&](std::string_view name, int maxFakeFrames)
             {
+                nvngxFgGenerating = fakeFramesCount > 0 && fakeFramesCount <= maxFakeFrames;
+
                 if (fakeFramesCount > maxFakeFrames)
                     return std::format("{} Doesn't support more than {}x", name, maxFakeFrames);
 
@@ -2985,9 +3030,7 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
             // Its frames come from the replacement, but the count is its own, not the game's DLSSG one
             if (state.activeFgOutput == FGOutput::FlipMeter)
             {
-                if (fg != nullptr && fg->IsActive() && !fg->IsPaused())
-                    fgText = std::format("{} x{}", fg->Name(), fg->GetInterpolatedFrameCount() + 1);
-                else
+                if (fgText.empty())
                     fgText = "Flip Meter off";
             }
             else if (activeNvngxFg == FGNvngxReplacement::Arturs)
@@ -3069,10 +3112,6 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
                                      NameWithVersion(currentFeature).c_str(), usesDx12CompatLayer ? " w/Dx12" : "");
             }
 
-            uint32_t interpolatedFrameCount = 0;
-            if (fg != nullptr && fg->IsActive() && !fg->IsPaused())
-                interpolatedFrameCount = fg->GetInterpolatedFrameCount();
-
             // The values that change every frame, as their average over the update interval so they can be read
             struct ShownTimes
             {
@@ -3082,11 +3121,13 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
                 double lastFrameTime = 0.0;
                 double lastUpscalerTime = 0.0;
                 double averageUpscalerTime = 0.0;
+                double baseFrameTime = 0.0;
             };
 
             static ShownTimes shown;
             static ShownTimes summed;
             static uint32_t summedFrames = 0;
+            static uint32_t summedBaseFrames = 0;
             static double shownAt = 0.0;
 
             summed.frameRate += frameRate;
@@ -3097,25 +3138,36 @@ void MenuCommon::RenderPerformanceOverlay(RenderMenuContext& ctx)
             summed.averageUpscalerTime += averageUpscalerFT;
             summedFrames++;
 
+            if (ctx.baseFrameTimeMs > 0.0)
+            {
+                summed.baseFrameTime += ctx.baseFrameTimeMs;
+                summedBaseFrames++;
+            }
+
             const float updateIntervalMs = config->FpsOverlayUpdateInterval.value_or_default();
 
             if (updateIntervalMs < 1.0f || shownAt <= 0.001 || now < shownAt || now - shownAt >= updateIntervalMs)
             {
                 const double frames = static_cast<double>(summedFrames);
-                shown = { summed.frameRate / frames,        summed.frameTime / frames,
-                          summed.averageFrameTime / frames, summed.lastFrameTime / frames,
-                          summed.lastUpscalerTime / frames, summed.averageUpscalerTime / frames };
+                shown = { summed.frameRate / frames,
+                          summed.frameTime / frames,
+                          summed.averageFrameTime / frames,
+                          summed.lastFrameTime / frames,
+                          summed.lastUpscalerTime / frames,
+                          summed.averageUpscalerTime / frames,
+                          summedBaseFrames > 0 ? summed.baseFrameTime / summedBaseFrames : 0.0 };
 
                 summed = {};
                 summedFrames = 0;
+                summedBaseFrames = 0;
                 shownAt = now;
             }
 
-            // With frame generation also the base frame rate
-            const std::string fpsValue =
-                interpolatedFrameCount
-                    ? StrFmt("%.1f/%.1f", shown.frameRate, shown.frameRate / (double) (interpolatedFrameCount + 1))
-                    : StrFmt("%.1f", shown.frameRate);
+            // With an FG input also the measured base frame rate, but only while FG is generating frames
+            const bool fgGenerating = (fg != nullptr && fg->IsGenerating()) || nvngxFgGenerating;
+            const std::string fpsValue = (shown.baseFrameTime > 0.0 && fgGenerating)
+                                             ? StrFmt("%.1f/%.1f", shown.frameRate, 1000.0 / shown.baseFrameTime)
+                                             : StrFmt("%.1f", shown.frameRate);
 
             const auto overlayRows = OverlayRows(overlayType);
             std::array<bool, OverlayRow_COUNT> rowShown {};
@@ -4213,42 +4265,22 @@ void MenuCommon::RenderActiveUpscalerSettings(RenderMenuContext& ctx)
                 // This will be applied by default
                 if (ImGui::Button("Stability"))
                 {
-                    auto const scaleRatioX =
-                        (float) currentFeature->TargetWidth() / (float) currentFeature->RenderWidth();
-                    auto const scaleRatioY =
-                        (float) currentFeature->TargetHeight() / (float) currentFeature->RenderHeight();
-                    auto const scaleRatio = std::max(scaleRatioX, scaleRatioY);
-
                     config->FsrVelocity = 0.5f;
-                    config->FsrReactiveScale = 0.25f;
-
-                    config->FsrShadingScale.reset();
-                    config->FsrAccAddPerFrame.reset();
-                    config->FsrMinDisOccAcc.reset();
-                    config->FsrShadingScale.set_volatile_value(0.5f / scaleRatio);
-                    config->FsrAccAddPerFrame.set_volatile_value(scaleRatio / 10.0f);
-                    config->FsrMinDisOccAcc.set_volatile_value(scaleRatio / 20.0f);
+                    config->FsrReactiveScale = 0.333f;
+                    config->FsrShadingScale = 0.5f;
+                    config->FsrAccAddPerFrame = 0.333f;
+                    config->FsrMinDisOccAcc = 0.0f;
                 }
 
                 ImGui::SameLine(0.0f, 6.0f);
 
                 if (ImGui::Button("Motion"))
                 {
-                    auto const scaleRatioX =
-                        (float) currentFeature->TargetWidth() / (float) currentFeature->RenderWidth();
-                    auto const scaleRatioY =
-                        (float) currentFeature->TargetHeight() / (float) currentFeature->RenderHeight();
-                    auto const scaleRatio = std::max(scaleRatioX, scaleRatioY);
-
                     config->FsrVelocity = 1.0f;
-                    config->FsrReactiveScale = 0.5f;
-
-                    config->FsrShadingScale.reset();
-                    config->FsrAccAddPerFrame.reset();
-                    config->FsrMinDisOccAcc.reset();
-                    config->FsrShadingScale.set_volatile_value(1.0f / scaleRatio);
-                    config->FsrAccAddPerFrame.set_volatile_value(scaleRatio / 10.0f);
-                    config->FsrMinDisOccAcc.set_volatile_value(scaleRatio / 20.0f);
+                    config->FsrReactiveScale = 0.666f;
+                    config->FsrShadingScale = 1.0f;
+                    config->FsrAccAddPerFrame = 0.166f;
+                    config->FsrMinDisOccAcc = 0.0f;
                 }
 
                 ImGui::SameLine(0.0f, 6.0f);
@@ -4568,6 +4600,82 @@ static bool RenderRatioOverrideSlider(const char* label, CustomOptional<int, NoD
         setting = index == 0 ? 0 : index - 1;
 
     return true;
+}
+
+// Generated frames per game frame, nullopt while FG is off. 0 is Dynamic MFG's 1X
+static std::optional<int> FGGeneratedFrames(State& state)
+{
+    // Frames of the Nvngx replacements and DLSSG come from the game's DLSSG calls,
+    // Flip Meter calls the replacement itself and has its own count
+    if (state.activeFgOutput != FGOutput::FlipMeter &&
+        (state.activeFgNvngx != FGNvngxReplacement::None || state.activeFgOutput == FGOutput::DLSSG))
+    {
+        if (state.DlssgDetectedInterpolationCount() > 0)
+            return state.DlssgDetectedInterpolationCount();
+
+        return std::nullopt;
+    }
+
+    if (auto fg = state.CurrentFG(); fg != nullptr && fg->IsGenerating())
+        return (int) fg->GetInterpolatedFrameCount();
+
+    return std::nullopt;
+}
+
+static void RenderFGStatus(State& state, Config* config)
+{
+    const auto input = state.activeFgInput;
+    const bool dlssgInput = input == FGInput::DLSSG || input == FGInput::NvngxFG;
+
+    if (dlssgInput && !ReflexHooks::isReflexHooked())
+    {
+        ImGui::TextColored(StatusError(), "Reflex not hooked");
+        ImGui::Text("If you are using an AMD/Intel GPU, then make sure you have fakenvapi");
+        return;
+    }
+
+    const auto generated = FGGeneratedFrames(state);
+
+    ImGui::Text("Status:");
+    ImGui::SameLine();
+
+    if (generated.has_value())
+    {
+        // The game's DLSSG count can be above what the Nvngx replacement generates
+        const int replacementMax = Nvngx_FG::getMaxFakeFramesCount();
+        const bool overReplacement = state.activeFgNvngx != FGNvngxReplacement::None &&
+                                     state.activeFgOutput != FGOutput::FlipMeter && *generated > replacementMax;
+
+        ImGui::TextColored(*generated > 0 && !overReplacement ? StatusOk() : StatusWarn(), "ON %dx", *generated + 1);
+
+        if (overReplacement)
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(StatusWarn(), "(the replacement supports up to %dx)", replacementMax + 1);
+        }
+
+        return;
+    }
+
+    ImGui::TextColored(StatusError(), "OFF");
+
+    // Game side FG that isn't being sent
+    bool gameSends = true;
+    if (input == FGInput::DLSSG)
+        gameSends = (state.fgLastFrame - state.dlssgLastFrame) < 3;
+    else if (input == FGInput::NvngxFG)
+        gameSends = ReflexHooks::dlssgFrameCountToGenerate() != 0 ||
+                    (state.dlssgGameDMFGSupported && config->FGDLSSGOverrideForceDMFG.value_or_default());
+    else if (input == FGInput::FSRFG || input == FGInput::FSRFG30)
+        gameSends = state.fsrfgInputActive;
+
+    if (!gameSends)
+    {
+        const char* name = dlssgInput ? "DLSS" : "FSR";
+        ImGui::Text("Please select %s Frame Generation in the game options\n"
+                    "You might need to select %s first",
+                    name, name);
+    }
 }
 
 void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
@@ -4944,6 +5052,13 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
             ImGui::Spacing();
         }
 
+        // One FG status for every input and output pair, Reprojection shows its own
+        if ((state.activeFgOutput != FGOutput::NoFG && state.activeFgOutput != FGOutput::Reprojection) ||
+            state.activeFgInput == FGInput::NvngxFG)
+        {
+            RenderFGStatus(state, config);
+        }
+
         // XeFG input to XeFG output: the game's own XeFG, like Override DLSSG Ratio
         if (XeFGInputs::Passthrough() && XeFGInputs::MaxInterpolations() >= 1)
         {
@@ -5013,13 +5128,16 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
         }
 
         auto fgOutput = state.CurrentFG();
-        if ((state.activeFgOutput != FGOutput::Reprojection && state.activeFgOutput != FGOutput::NoFG &&
-             state.activeFgInput != FGInput::NoFG && state.activeFgInput != FGInput::NvngxFG) &&
-            fgOutput)
+        if (state.activeFgOutput != FGOutput::NoFG && state.activeFgInput != FGInput::NoFG &&
+            state.activeFgInput != FGInput::NvngxFG && fgOutput)
         {
-            ImGui::Checkbox("Show Detected UI", &state.fgHudlessCompare);
-            ShowTooltip("Needs HUDless texture to compare with final image.\n"
-                        "UI elements and ONLY UI elements should have a pink tint!");
+            // Reprojection has its own "Show static elements" for the same compare
+            if (state.activeFgOutput != FGOutput::Reprojection)
+            {
+                ImGui::Checkbox("Show Detected UI", &state.fgHudlessCompare);
+                ShowTooltip("Needs HUDless texture to compare with final image.\n"
+                            "UI elements and ONLY UI elements should have a pink tint!");
+            }
 
             const auto isUsingUIAny = fgOutput->IsUsingUIAny();
 
@@ -5049,31 +5167,29 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
             ImGui::EndDisabled();
         }
 
-        const bool showOutputSpecificFGSettings =
-            state.activeFgInput == FGInput::DLSSG || state.activeFgInput == FGInput::FSRFG ||
-            state.activeFgInput == FGInput::FSRFG30 || state.activeFgInput == FGInput::XeFG;
+        // Inputs where the game tags its own HUDless and UI for Opti's FG output
+        const bool gameInput = state.activeFgInput == FGInput::DLSSG || state.activeFgInput == FGInput::FSRFG ||
+                               state.activeFgInput == FGInput::FSRFG30 || state.activeFgInput == FGInput::XeFG;
+        // The game calls the Nvngx replacement directly, there's no Opti FG output
+        const bool nvngxInput = state.activeFgInput == FGInput::NvngxFG;
+        const bool outputSettings = fgOutput != nullptr && state.activeFgInput != FGInput::NoFG;
+        // FSR FG output and every Nvngx replacement run the HUD cutoff
+        const bool showHudCutoff =
+            nvngxInput || state.activeFgNvngx != FGNvngxReplacement::None || state.activeFgOutput == FGOutput::FSRFG;
 
-        const bool showHudCutoff = state.activeFgInput == FGInput::NvngxFG || state.activeFgOutput == FGOutput::FSRFG;
-
-        if (showOutputSpecificFGSettings || showHudCutoff)
+        if (outputSettings || nvngxInput || showHudCutoff)
         {
             if (auto ch = ScopedCollapsingHeader("Advanced FG Settings"); ch.IsHeaderOpen())
             {
                 ScopedIndent indent {};
                 ImGui::Spacing();
 
-                if (showOutputSpecificFGSettings)
+                if ((outputSettings && gameInput) || nvngxInput)
                 {
-                    auto fgOutput = state.CurrentFG();
-                    if (fgOutput)
+                    if (!nvngxInput)
                     {
-                        ImGui::BeginDisabled(!fgOutput->IsActive());
-
-                        const auto isUsingUIAny = fgOutput->IsUsingUIAny();
-                        const auto isUsingHudlessAny = fgOutput->IsUsingHudlessAny();
-
                         bool disableUI = config->FGDisableUI.value_or_default();
-                        ImGui::BeginDisabled(!isUsingUIAny && !disableUI);
+                        ImGui::BeginDisabled(!fgOutput->IsUsingUIAny() && !disableUI);
 
                         if (ImGui::Checkbox("Disable UI texture", &disableUI))
                         {
@@ -5081,24 +5197,37 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                             fgOutput->UpdateTarget();
                         }
 
-                        ShowTooltip("For when the game sends a UI texture, but you want to disable it");
+                        ShowTooltip("For when the game sends a UI texture, but you want to disable it\n"
+                                    "Greyed out while the game doesn't send one");
 
                         ImGui::EndDisabled();
-
                         ImGui::SameLine(0.0f, 16.0f);
+                    }
 
-                        bool disableHudless = config->FGDisableHudless.value_or_default();
-                        ImGui::BeginDisabled(!isUsingHudlessAny && !disableHudless);
+                    // With Nvngx as input there's no Opti FG output to tell if the game sends one
+                    bool disableHudless = config->FGDisableHudless.value_or_default();
+                    ImGui::BeginDisabled(!nvngxInput && !fgOutput->IsUsingHudlessAny() && !disableHudless);
 
-                        if (ImGui::Checkbox("Disable HUDless", &disableHudless))
-                        {
-                            config->FGDisableHudless = disableHudless;
-                        }
+                    if (ImGui::Checkbox("Disable HUDless", &disableHudless))
+                        config->FGDisableHudless = disableHudless;
 
-                        ShowTooltip("For when the game sends HUDless, but you want to disable it");
+                    if (nvngxInput)
+                        ShowTooltip("For when the game sends HUDless, but you want to disable it\n"
+                                    "Might be required for some sets of DispatchFlags");
+                    else
+                        ShowTooltip("For when the game sends HUDless, but you want to disable it\n"
+                                    "Greyed out while the game doesn't send one");
 
-                        ImGui::EndDisabled();
+                    ImGui::EndDisabled();
+                }
 
+                if (outputSettings && gameInput)
+                {
+                    // Read by the Streamline and FSR FG inputs
+                    const bool validNowInput = state.activeFgInput != FGInput::XeFG;
+
+                    if (validNowInput)
+                    {
                         bool depthValidNow = config->FGDepthValidNow.value_or_default();
                         if (ImGui::Checkbox("Depth as ValidNow", &depthValidNow))
                             config->FGDepthValidNow = depthValidNow;
@@ -5122,36 +5251,84 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                         ShowTooltip("Will use more VRAM, but some games might need this");
 
                         ImGui::SameLine(0.0f, 16.0f);
+                    }
 
-                        bool firstHudless = config->FGOnlyAcceptFirstHudless.value_or_default();
-                        if (ImGui::Checkbox("Accept First HUDless", &firstHudless))
-                            config->FGOnlyAcceptFirstHudless = firstHudless;
+                    bool firstHudless = config->FGOnlyAcceptFirstHudless.value_or_default();
+                    if (ImGui::Checkbox("Accept First HUDless", &firstHudless))
+                        config->FGOnlyAcceptFirstHudless = firstHudless;
 
-                        ShowTooltip("If source tags more than one HUDless, only use the first one");
+                    ShowTooltip("If source tags more than one HUDless, only use the first one");
 
-                        if (bool skipReset = config->FGSkipReset.value_or_default();
-                            ImGui::Checkbox("Skip Reset", &skipReset))
+                    // FFX API inputs can tag HUDless at both config and dispatch
+                    if (state.activeFgInput == FGInput::FSRFG)
+                    {
+                        bool skipConfig = config->FSRFGSkipConfigForHudless.value_or_default();
+                        if (ImGui::Checkbox("Skip Config for HUDless", &skipConfig))
+                            config->FSRFGSkipConfigForHudless = skipConfig;
+
+                        ShowTooltip("Do not use HUDless set at ffxConfig");
+
+                        ImGui::SameLine(0.0f, 16.0f);
+
+                        bool skipDispatch = config->FSRFGSkipDispatchForHudless.value_or_default();
+                        if (ImGui::Checkbox("Skip Dispatch for HUDless", &skipDispatch))
+                            config->FSRFGSkipDispatchForHudless = skipDispatch;
+
+                        ShowTooltip("Do not use HUDless set at ffxDispatch");
+                    }
+                }
+
+                if (nvngxInput)
+                {
+                    // Issue mostly shows up on AMD on Windows on pre-RDNA3 in some non-UE games
+                    // Hide to reduce confusion, config is still read
+                    const auto activeNvngxFg = state.activeFgNvngx;
+                    const bool isUnrealEngine = state.NVNGX_Engine == NVSDK_NGX_ENGINE_TYPE_UNREAL ||
+                                                state.gameQuirks & GameQuirk::ForceUnrealEngine;
+                    const bool isDllProxyNvngxType = activeNvngxFg == FGNvngxReplacement::Nukems ||
+                                                     activeNvngxFg == FGNvngxReplacement::Arturs ||
+                                                     activeNvngxFg == FGNvngxReplacement::Custom;
+
+                    if (state.swapchainApi == DX12 && isDllProxyNvngxType && !primaryGpu.dlssCapable &&
+                        primaryGpu.fsr4Support == FSR4Support::None && !primaryGpu.d3d12IsVkd3dProton &&
+                        !isUnrealEngine)
+                    {
+                        if (bool makeDepthCopy = config->NvngxFGMakeDepthCopy.value_or_default();
+                            ImGui::Checkbox("Fix broken visuals", &makeDepthCopy))
                         {
-                            config->FGSkipReset = skipReset;
+                            config->NvngxFGMakeDepthCopy = makeDepthCopy;
                         }
+                        ShowTooltip("Makes a copy of the depth buffer\nCan fix broken visuals in some games on AMD "
+                                    "GPUs under Windows\nCan cause stutters, so best to use only when necessary");
+                    }
+                }
 
-                        ShowTooltip("Don't use reset signals from FG Inputs");
+                if (outputSettings)
+                {
+                    if (bool skipReset = config->FGSkipReset.value_or_default();
+                        ImGui::Checkbox("Skip Reset", &skipReset))
+                    {
+                        config->FGSkipReset = skipReset;
+                    }
 
-                        ImGui::EndDisabled();
+                    ShowTooltip("Don't use reset signals from FG Inputs");
 
-                        ImGui::PushItemWidth(80.0f * menuResScale);
+                    ImGui::PushItemWidth(80.0f * menuResScale);
 
-                        auto frameAhead = config->FGAllowedFrameAhead.value_or_default();
-                        if (ImGui::InputInt("Frame Ahead", &frameAhead, 1, 1) && frameAhead > 0 && frameAhead < 4)
-                        {
-                            config->FGAllowedFrameAhead = frameAhead;
-                        }
+                    auto frameAhead = config->FGAllowedFrameAhead.value_or_default();
+                    if (ImGui::InputInt("Frame Ahead", &frameAhead, 1, 1) && frameAhead > 0 && frameAhead < 4)
+                    {
+                        config->FGAllowedFrameAhead = frameAhead;
+                    }
 
-                        ShowTooltip("Number of frames the FG is allowed to be ahead of the game\n"
-                                    "Might prevent FG on/off switching, but also might cause issues");
+                    ShowTooltip("Number of frames the FG is allowed to be ahead of the game\n"
+                                "Might prevent FG on/off switching, but also might cause issues");
 
-                        ImGui::PopItemWidth();
+                    ImGui::PopItemWidth();
 
+                    // Only FSR FG and XeFG take frame times
+                    if (state.activeFgOutput == FGOutput::FSRFG || state.activeFgOutput == FGOutput::XeFG)
+                    {
                         ImGui::SameLine(0.0f, 16.0f);
 
                         const char* ftSources[] = { "Input", "Opti", "Zero" };
@@ -5168,7 +5345,6 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                         {
                             for (size_t i = 0; i < currentSourceCount; i++)
                             {
-
                                 if (ImGui::Selectable(ftSources[i], currentSet == i))
                                 {
                                     LOG_DEBUG("FTInput has changed {} -> {}", ftSources[currentSet], ftSources[i]);
@@ -5195,8 +5371,11 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                     if (ImGui::SliderFloat("Hud Cutoff", &fgHudCutoff, 0.00f, 1.0f, "%.2f"))
                         config->FGHudCutoff = fgHudCutoff;
 
-                    ShowTooltip("Cutoffs transparency from UI to help with interpolation\n"
-                                "You can use Show Detected UI to see the difference\n0.0 is auto");
+                    if (nvngxInput)
+                        ShowTooltip("Cutoffs transparency from UI to help with interpolation\n0.0 is auto");
+                    else
+                        ShowTooltip("Cutoffs transparency from UI to help with interpolation\n"
+                                    "You can use Show Detected UI to see the difference\n0.0 is auto");
                 }
             }
         }
@@ -5632,26 +5811,6 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         const bool dynamicOnOff =
             std::clamp(config->FGXeFGInterpolationCount.value_or_default(), 1, std::max(maxCount, 1)) == 1;
 
-        ImGui::Text("Current XeFG state:");
-        ImGui::SameLine();
-        if (!fgOutput->IsActive())
-        {
-            ImGui::TextColored(StatusError(), "OFF");
-        }
-        else
-        {
-            // Dynamic MFG's 1X keeps FG running with no generated frames
-            const auto count = fgOutput->GetInterpolatedFrameCount();
-            const auto color = count > 0 ? ImVec4(0.f, 1.f, 0.25f, 1.f) : ImVec4(1.0f, 0.647f, 0.0f, 1.f);
-            ImGui::TextColored(toneMapColor(color), std::format("ON {}x", count + 1).c_str());
-
-            if (dynamicMFG)
-            {
-                ImGui::SameLine();
-                ImGui::TextDisabled("(Dynamic)");
-            }
-        }
-
         ImGui::BeginDisabled(!correctMVs || cantActivate);
 
         // Dynamic MFG: the Frame Gen setting is the most, the multiplier follows the game's frame rate
@@ -5848,17 +6007,6 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
             }
         }
 
-        ImGui::Text("Current DLSSG state:");
-        ImGui::SameLine();
-        if (auto count = state.dlssgDetectedInterpolationCount; count > 0)
-        {
-            ImGui::TextColored(toneMapColor(ImVec4(0.f, 1.f, 0.25f, 1.f)), std::format("ON {}x", count + 1).c_str());
-        }
-        else
-        {
-            ImGui::TextColored(StatusError(), "OFF");
-        }
-
         RenderFGModeSlider(ctx, "Frame Gen##dlssg", dlssg->GetMaxInterpolationCount(),
                            &config->FGDLSSGInterpolationCount);
 
@@ -5926,23 +6074,48 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
         {
             const auto status = swapChain->GetStatus();
 
-            if (status.metering)
+            // While no frames are generated the FG status already says it's off
+            if (status.metering && FAILED(status.presentResult))
             {
-                ImGui::TextColored(
-                    StatusOk(), Tr::Translate("Driver pacing: %s, %uX"),
-                    Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode" : "adaptive mode"),
-                    status.generatedFrames + 1);
+                ImGui::TextColored(StatusError(), "Driver pacing: the driver doesn't pace the flips (%08X, status %u)",
+                                   (UINT) status.presentResult, status.presentStatus);
+
+                switch (status.presentStatus)
+                {
+                case AmdExtFlipMeterStatus_WindowNotEligible:
+                    ImGui::TextWrapped("The driver doesn't see the game as a fullscreen app flipped straight to the "
+                                       "display. Try exclusive fullscreen and closing overlays (Discord, Steam, Game "
+                                       "Bar, RTSS) and windows on top of the game.");
+                    ShowTooltip("Status 7: the driver's window manager doesn't report the swapchain's window\n"
+                                "in its fullscreen state, the window is likely composed by DWM\n"
+                                "or shown on an overlay plane");
+                    break;
+
+                case AmdExtFlipMeterStatus_NoPacingInfo:
+                    ImGui::TextWrapped("The driver got flips without usable pacing info.");
+                    ShowTooltip("Status 8: a flip came without a flip meter Present, with a target time of 0\n"
+                                "or with more generated frames than configured");
+                    break;
+
+                case AmdExtFlipMeterStatus_Retry:
+                    ImGui::TextWrapped("The driver has no pacing config for the swapchain.");
+                    break;
+
+                default:
+                    ImGui::TextWrapped("The driver hasn't reported on the flips yet.");
+                    break;
+                }
+            }
+            else if (status.metering)
+            {
+                ImGui::TextColored(StatusOk(), Tr::Translate("Driver pacing: %s"),
+                                   Tr::Translate(status.mode == AmdExtFlipMeterMode_FrameIndex ? "frame index mode"
+                                                                                               : "adaptive mode"));
                 ShowTooltip("AMD driver flip metering holds the flips of the generated frames\n"
                             "Adaptive mode is FSR's and paces one generated frame,\n"
                             "frame index mode paces more");
             }
-            else if (status.generatedFrames == 0)
-            {
-                ImGui::TextDisabled("Driver pacing: off while no frames are generated");
-                ShowTooltip("Frame generation is off, or the game doesn't send\n"
-                            "its inputs, like in menus and loading screens");
-            }
-            else
+            else if (status.generatedFrames != 0)
             {
                 ImGui::TextColored(StatusError(), "Driver pacing: off, only the game's frames are shown");
             }
@@ -6566,7 +6739,21 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
     }
 
     const FGNvngxReplacement activeNvngxFg = state.activeFgNvngx;
-    if (ScopedCard::Shows("fg_nvngx") && activeNvngxFg != FGNvngxReplacement::None)
+
+    bool nvngxLoaded = false;
+    if (state.swapchainApi == Vulkan)
+        nvngxLoaded = Nvngx_FG::isVulkanAvailable();
+    if (state.swapchainApi == DX12)
+        nvngxLoaded = Nvngx_FG::isDx12Available();
+
+    // Status and the shared settings are in the Frame Generation card, skip a card with only a title
+    const bool nvngxHasSettings =
+        activeNvngxFg == FGNvngxReplacement::Arturs ||
+        (activeNvngxFg == FGNvngxReplacement::Nukems && !state.nukemsFgFileAvailable) ||
+        (nvngxLoaded && (Nvngx_FG::supportsDispatchFlags() || activeNvngxFg == FGNvngxReplacement::Nukems ||
+                         activeNvngxFg == FGNvngxReplacement::FFX || activeNvngxFg == FGNvngxReplacement::Combo));
+
+    if (ScopedCard::Shows("fg_nvngx") && activeNvngxFg != FGNvngxReplacement::None && nvngxHasSettings)
     {
         ScopedCard card;
 
@@ -6609,64 +6796,7 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                                     "3x - Enabler\n4x - FFX + Enabler\n5x - Enabler\n6x - FFX + Enabler");
         }
 
-        if (state.activeFgInput == FGInput::NvngxFG)
-        {
-
-            bool dmfgActive = state.dlssgGameDMFGSupported && config->FGDLSSGOverrideForceDMFG.value_or_default();
-
-            if (!ReflexHooks::isReflexHooked())
-            {
-                ImGui::TextColored(StatusError(), "Reflex not hooked");
-                ImGui::Text("If you are using an AMD/Intel GPU, then make sure you have Fakenvapi");
-            }
-            else if (ReflexHooks::dlssgFrameCountToGenerate() == 0 && !dmfgActive)
-            {
-                ImGui::Text("Please select DLSS Frame Generation in the game options\n"
-                            "You might need to select DLSS first");
-            }
-
-            if (state.swapchainApi == DX12)
-            {
-                ImGui::Text("Current DLSSG state:");
-                ImGui::SameLine();
-                if (auto count = state.dlssgDetectedInterpolationCount; count > 0)
-                {
-                    ImGui::TextColored(toneMapColor(ImVec4(0.f, 1.f, 0.25f, 1.f)),
-                                       std::format("ON {}x", count + 1).c_str());
-                }
-                else
-                {
-                    ImGui::TextColored(StatusError(), "OFF");
-                }
-
-                // Issue mostly shows up on AMD on Windows on pre-RDNA3 in some non-UE games
-                // Hide to reduce confusion, config is still read
-                const bool isUnrealEngine = State::Instance().NVNGX_Engine == NVSDK_NGX_ENGINE_TYPE_UNREAL ||
-                                            State::Instance().gameQuirks & GameQuirk::ForceUnrealEngine;
-                const bool isDllProxyNvngxType = activeNvngxFg == FGNvngxReplacement::Nukems ||
-                                                 activeNvngxFg == FGNvngxReplacement::Arturs ||
-                                                 activeNvngxFg == FGNvngxReplacement::Custom;
-                if (isDllProxyNvngxType && !primaryGpu.dlssCapable && primaryGpu.fsr4Support == FSR4Support::None &&
-                    !primaryGpu.d3d12IsVkd3dProton && !isUnrealEngine)
-                {
-                    if (bool makeDepthCopy = config->NvngxFGMakeDepthCopy.value_or_default();
-                        ImGui::Checkbox("Fix broken visuals", &makeDepthCopy))
-                    {
-                        config->NvngxFGMakeDepthCopy = makeDepthCopy;
-                    }
-                    ShowTooltip("Makes a copy of the depth buffer\nCan fix broken visuals in some games on AMD "
-                                "GPUs under Windows\nCan cause stutters, so best to use only when necessary");
-                }
-            }
-        }
-
-        bool isLoaded = false;
-        if (state.swapchainApi == Vulkan)
-            isLoaded = Nvngx_FG::isVulkanAvailable();
-        if (state.swapchainApi == DX12)
-            isLoaded = Nvngx_FG::isDx12Available();
-
-        if (isLoaded)
+        if (nvngxLoaded)
         {
             // DLSS Enabler's own, or any custom provider reporting its antighosting version
             if (Nvngx_FG::supportsDispatchFlags())
@@ -6858,91 +6988,6 @@ void MenuCommon::RenderFrameGenerationRuntimeSettings(RenderMenuContext& ctx)
                             state.fgChanged = true;
                     }
                 }
-            }
-
-            if (bool disableHudless = config->NvngxFGDisableHudless.value_or_default();
-                ImGui::Checkbox("Disable HUDless", &disableHudless))
-            {
-                config->NvngxFGDisableHudless = disableHudless;
-            }
-            ShowTooltip("Might be required for some sets of DispatchFlags");
-        }
-    }
-
-    // FSR-FG Inputs
-    if (ScopedCard::Shows("fg_fsrfg_inputs") && state.currentFGSwapchain != nullptr &&
-        (state.activeFgInput == FGInput::FSRFG || state.activeFgInput == FGInput::FSRFG30))
-    {
-        ScopedCard card;
-
-        SeparatorWithHelpMarker("Frame Generation (FSR-FG Inputs)", "Select FSR-FG in-game");
-
-        auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
-        if (fgOutput != nullptr)
-        {
-            ImGui::Text("Current FSR-FG state:");
-            ImGui::SameLine();
-            if (state.fsrfgInputActive)
-            {
-                if (fgOutput->IsActive())
-                    ImGui::TextColored(toneMapColor(ImVec4(0.f, 1.f, 0.25f, 1.f)), "ON");
-                else
-                    ImGui::TextColored(toneMapColor(ImVec4(1.0f, 0.647f, 0.0f, 1.f)), "ACTIVATE FG");
-            }
-            else
-            {
-                ImGui::TextColored(StatusError(), "OFF");
-                ImGui::Text("Please select FSR Frame Generation in the game options\n"
-                            "You might need to select FSR first");
-            }
-        }
-
-        bool skipConfig = config->FSRFGSkipConfigForHudless.value_or_default();
-        if (ImGui::Checkbox("Skip Config for HUDless", &skipConfig))
-            config->FSRFGSkipConfigForHudless = skipConfig;
-
-        ShowTooltip("Do not use HUDless set at ffxConfig");
-
-        ImGui::SameLine(0.0f, 6.0f);
-
-        bool skipDispatch = config->FSRFGSkipDispatchForHudless.value_or_default();
-        if (ImGui::Checkbox("Skip Dispatch for HUDless", &skipDispatch))
-            config->FSRFGSkipDispatchForHudless = skipDispatch;
-
-        ShowTooltip("Do not use HUDless set at ffxDispatch");
-    }
-
-    // Streamline FG Inputs
-    if (ScopedCard::Shows("fg_sl_inputs") && state.currentFGSwapchain != nullptr &&
-        state.activeFgInput == FGInput::DLSSG)
-    {
-        ScopedCard card;
-
-        SeparatorWithHelpMarker("Frame Generation (Streamline FG Inputs)", "Select DLSS-FG in-game");
-
-        auto fgOutput = reinterpret_cast<IFGFeature_Dx12*>(state.currentFG);
-
-        if (!ReflexHooks::isReflexHooked())
-        {
-            ImGui::TextColored(StatusError(), "Reflex not hooked");
-            ImGui::Text("If you are using an AMD/Intel GPU, then make sure you have fakenvapi");
-        }
-        else if (fgOutput != nullptr)
-        {
-            ImGui::Text("Current Streamline FG state:");
-            ImGui::SameLine();
-            if ((state.fgLastFrame - state.dlssgLastFrame) < 3)
-            {
-                if (fgOutput->IsActive())
-                    ImGui::TextColored(toneMapColor(ImVec4(0.f, 1.f, 0.25f, 1.f)), "ON");
-                else
-                    ImGui::TextColored(toneMapColor(ImVec4(1.0f, 0.647f, 0.0f, 1.f)), "ACTIVATE FG");
-            }
-            else
-            {
-                ImGui::TextColored(StatusError(), "OFF");
-                ImGui::Text("Please select DLSS Frame Generation in the game options\n"
-                            "You might need to select DLSS first");
             }
         }
     }
@@ -7442,11 +7487,16 @@ void MenuCommon::RenderActiveImageSettings(RenderMenuContext& ctx)
                 selectedMode = 1;
             else if (currentShader == SharpenShader::DepthAware)
                 selectedMode = 2;
-            else if (currentShader == SharpenShader::LocalContrastDepthAware)
+            else if (currentShader == SharpenShader::DepthAwareDAS)
                 selectedMode = 3;
+            else if (currentShader == SharpenShader::BabaNeural)
+                selectedMode = 4;
+            else if (currentShader == SharpenShader::OptiSharpen)
+                selectedMode = 5;
         }
 
-        const char* sharpenModes[] = { "Upscaler's default", "RCAS", "Depth Aware (RCAS)", "Depth Aware (DAS)" };
+        const char* sharpenModes[] = { "Upscaler's default", "RCAS",          "Depth Aware (RCAS)",
+                                       "Depth Aware (DAS)",  "Neural (BaBa)", "OptiSharpen" };
 
         if (ImGui::Combo("Method", &selectedMode, sharpenModes, IM_ARRAYSIZE(sharpenModes)))
         {
@@ -7462,14 +7512,23 @@ void MenuCommon::RenderActiveImageSettings(RenderMenuContext& ctx)
                 else if (selectedMode == 2)
                     Config::Instance()->SharpnessShader = SharpenShader::DepthAware;
                 else if (selectedMode == 3)
-                    Config::Instance()->SharpnessShader = SharpenShader::LocalContrastDepthAware;
+                    Config::Instance()->SharpnessShader = SharpenShader::DepthAwareDAS;
+                else if (selectedMode == 4)
+                    Config::Instance()->SharpnessShader = SharpenShader::BabaNeural;
+                else if (selectedMode == 5)
+                    Config::Instance()->SharpnessShader = SharpenShader::OptiSharpen;
             }
         }
 
         ShowTooltip("Select the sharpening filter to apply.\n\n"
                     "Upscaler's default: Uses the sharpening provided by the upscaler.\n"
                     "RCAS: AMD's RCAS, modified for Contrast and MAS.\n"
-                    "Depth Aware: Smarter sharpening with fewer artifacts (heavier).\n\n"
+                    "Depth Aware: Smarter sharpening with fewer artifacts (heavier).\n"
+                    "Neural (BaBa): Small neural network from the BaBa ReShade shaders. Only changes the luma and\n"
+                    "skips aliased edges and fireflies. 0.5 strength is the default intensity of the ReShade shader.\n"
+                    "OptiSharpen: Small neural network trained for OptiScaler. Only changes the luma, works the same\n"
+                    "for SDR and HDR. 0.5 strength is the trained strength.\n"
+                    "Neural shaders use RCAS when their shader isn't available for the current API.\n\n"
                     "By default uses a sharpening value provided by the game.\n"
                     "Select 'Override' under 'Sharpness' and adjust the slider to change it.");
 
@@ -7483,7 +7542,124 @@ void MenuCommon::RenderActiveImageSettings(RenderMenuContext& ctx)
                 config->MotionSharpnessEnabled = overrideMotionSharpness;
             ShowTooltip("Enables sharpness adjustments according to the motion");
 
-            if (Config::Instance()->SharpnessShader.value_or_default() != SharpenShader::RCAS)
+            // Shared by the DA and Neural shaders
+            auto ClampOutputCheckbox = [config]()
+            {
+                if (bool clamp = config->DAClampOutput.value_or(false); ImGui::Checkbox("Clamp Output", &clamp))
+                {
+                    if (clamp)
+                        config->DAClampOutput = true;
+                    else
+                        config->DAClampOutput.reset();
+                }
+
+                ShowTooltip("Clamps the final image to the [0, 1] range.\n\n"
+                            "Prevents overshoot artifacts such as bright halos or negative colors.\n"
+                            "Recommended for LDR pipelines; optional for HDR depending on tone-mapping.\n\n"
+                            "Off when not set, games that report SDR can still send HDR color");
+            };
+
+            if (Config::Instance()->SharpnessShader.value_or_default() == SharpenShader::BabaNeural)
+            {
+                if (bool overrideMSDebug = config->MotionSharpnessDebug.value_or_default();
+                    ImGui::Checkbox("MAS Debug", &overrideMSDebug))
+                    config->MotionSharpnessDebug = overrideMSDebug;
+
+                ShowTooltip("Areas that are more red will have more sharpness applied\n"
+                            "Green areas will get reduced sharpness");
+
+                if (auto ch = ScopedCollapsingHeader("Neural Sharpening Parameters"); ch.IsHeaderOpen())
+                {
+                    ScopedIndent indent {};
+                    ImGui::Spacing();
+
+                    const char* babaModels[] = { "Model A (standard)", "Model B (edge-enhanced)" };
+                    int babaModel = std::clamp(config->BabaNeuralModel.value_or_default(), 0, 1);
+
+                    if (ImGui::Combo("Neural Model", &babaModel, babaModels, IM_ARRAYSIZE(babaModels)))
+                        config->BabaNeuralModel = babaModel;
+
+                    ShowTooltip("Model A: Standard sharpening.\n"
+                                "Model B: Edge-enhanced.");
+
+                    float edgeResponse = config->BabaNeuralEdgeResponse.value_or_default();
+                    if (ImGui::SliderFloat("Edge Response", &edgeResponse, -1.0f, 1.0f, "%.2f",
+                                           ImGuiSliderFlags_AlwaysClamp))
+                        config->BabaNeuralEdgeResponse = edgeResponse;
+
+                    ShowTooltip("Controls how the sharpening adapts to the detected edges.\n\n"
+                                "Negative values smooth the edges.\n"
+                                "Positive values enhance the edges.\n"
+                                "0 is uniform.");
+
+                    const char* babaViews[] = { "Normal", "Sharpening map", "Residual map" };
+                    int babaView = std::clamp(config->BabaNeuralDebugView.value_or_default(), 0, 2);
+
+                    if (ImGui::Combo("Debug View", &babaView, babaViews, IM_ARRAYSIZE(babaViews)))
+                        config->BabaNeuralDebugView = babaView;
+
+                    ShowTooltip("Normal: The final image.\n"
+                                "Sharpening map: The sharpening that gets applied, plain gray means no change.\n"
+                                "Residual map: Where the network wants to change the image.");
+
+                    ClampOutputCheckbox();
+
+                    if (ImGui::Button("Reset Neural Values"))
+                    {
+                        config->BabaNeuralModel.reset();
+                        config->BabaNeuralEdgeResponse.reset();
+                        config->BabaNeuralDebugView.reset();
+                    }
+                }
+            }
+            else if (Config::Instance()->SharpnessShader.value_or_default() == SharpenShader::OptiSharpen)
+            {
+                if (bool overrideMSDebug = config->MotionSharpnessDebug.value_or_default();
+                    ImGui::Checkbox("MAS Debug", &overrideMSDebug))
+                    config->MotionSharpnessDebug = overrideMSDebug;
+
+                ShowTooltip("Areas that are more red will have more sharpness applied\n"
+                            "Green areas will get reduced sharpness");
+
+                if (auto ch = ScopedCollapsingHeader("OptiSharpen Parameters"); ch.IsHeaderOpen())
+                {
+                    ScopedIndent indent {};
+                    ImGui::Spacing();
+
+                    const char* optiModels[] = { "Natural D10", "Crisp D10 p50", "Natural D10 (fp16 packed)",
+                                                 "Crisp D10 p50 (fp16 packed)" };
+                    int optiModel = std::clamp(config->OptiSharpenModel.value_or_default(), 0, 3);
+
+                    if (ImGui::Combo("Model", &optiModel, optiModels, IM_ARRAYSIZE(optiModels)))
+                        config->OptiSharpenModel = optiModel;
+
+                    ShowTooltip("Natural D10: Natural sharpening.\n"
+                                "Crisp D10 p50: Stronger.\n"
+                                "(fp16 packed): The same networks in half precision, written for packed math.\n"
+                                "Faster on Dx12 / Vulkan, Dx11 runs them in fp32.\n"
+                                "All use a 25 tap (5x5) window and overshoot the local range by up to 15 percent.\n"
+                                "Each model scales the strength, the top of the slider is its best point.");
+
+                    const char* optiViews[] = { "Normal", "Sharpening map", "Change magnitude" };
+                    int optiView = std::clamp(config->OptiSharpenDebugView.value_or_default(), 0, 2);
+
+                    if (ImGui::Combo("Debug View", &optiView, optiViews, IM_ARRAYSIZE(optiViews)))
+                        config->OptiSharpenDebugView = optiView;
+
+                    ShowTooltip("Normal: The final image.\n"
+                                "Sharpening map: The relative luma change, plain gray means no change.\n"
+                                "Change magnitude: How much each pixel changes, black means no change.");
+
+                    ClampOutputCheckbox();
+
+                    if (ImGui::Button("Reset OptiSharpen Values"))
+                    {
+                        config->OptiSharpenModel.reset();
+                        config->OptiSharpenDebugView.reset();
+                    }
+                }
+            }
+            else if (Config::Instance()->SharpnessShader.value_or_default() != SharpenShader::RCAS)
             {
                 if (bool overrideMSDebug = config->MotionSharpnessDebug.value_or_default();
                     ImGui::Checkbox("DA + MAS Debug", &overrideMSDebug))
@@ -7499,18 +7675,7 @@ void MenuCommon::RenderActiveImageSettings(RenderMenuContext& ctx)
                     ScopedIndent indent {};
                     ImGui::Spacing();
 
-                    if (bool clamp = config->DAClampOutput.value_or(false); ImGui::Checkbox("Clamp Output", &clamp))
-                    {
-                        if (clamp)
-                            config->DAClampOutput = true;
-                        else
-                            config->DAClampOutput.reset();
-                    }
-
-                    ShowTooltip("Clamps the final image to the [0, 1] range.\n\n"
-                                "Prevents overshoot artifacts such as bright halos or negative colors.\n"
-                                "Recommended for LDR pipelines; optional for HDR depending on tone-mapping.\n\n"
-                                "When not set OptiScaler controls it via upscalers HDR flag");
+                    ClampOutputCheckbox();
 
                     if (currentFeature->DepthLinear())
                     {
@@ -8630,7 +8795,7 @@ void MenuCommon::RenderFpsOverlaySettings(RenderMenuContext& ctx)
                 for (size_t i = 0; i < shownRows.size(); i++)
                 {
                     const int row = shownRows[i].row;
-                    ScopedID rowId { overlayRowKeys[row] };
+                    ScopedID rowId { EnumToCode((OverlayRow) row).c_str() };
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
@@ -9616,6 +9781,25 @@ void MenuCommon::RenderDetectedCard(RenderMenuContext& ctx)
     ImGui::PopStyleVar(2);
 }
 
+static const char* NvngxFgName(const State& state)
+{
+    switch (state.activeFgNvngx)
+    {
+    case FGNvngxReplacement::None:
+        return "Off";
+    case FGNvngxReplacement::Nukems:
+        return "Nukems";
+    case FGNvngxReplacement::Arturs:
+        return "Enabler";
+    case FGNvngxReplacement::FFX:
+        return "FFX";
+    case FGNvngxReplacement::Custom:
+        return state.activeFgNvngxCustom.c_str();
+    default:
+        return "Combo";
+    }
+}
+
 void MenuCommon::RenderStatusInfo(RenderMenuContext& ctx)
 {
     auto& state = ctx.state;
@@ -9752,6 +9936,7 @@ void MenuCommon::RenderStatusInfo(RenderMenuContext& ctx)
             else
                 pair("FG Output", "Off", true);
 
+            pair("FG Nvngx", NvngxFgName(state), state.activeFgNvngx == FGNvngxReplacement::None);
             pair("Ratio override", ratioOverride, ratioOverride == "Off");
             pair("Mipmap bias",
                  config->MipmapBiasOverride.has_value() ? StrFmt("%.3f", config->MipmapBiasOverride.value()) : "Off",
@@ -9889,8 +10074,6 @@ const MenuCommon::MenuBox* MenuCommon::GetMenuBoxes(size_t& count)
         { "fg_reprojection", "Frame Gen", "Reprojection Settings", nullptr, RenderFrameGenerationRuntimeSettings },
         { "fg_optifg", "Frame Gen", "OptiFG Settings", nullptr, RenderFrameGenerationRuntimeSettings },
         { "fg_nvngx", "Frame Gen", "Nvngx FG replacement", nullptr, RenderFrameGenerationRuntimeSettings },
-        { "fg_fsrfg_inputs", "Frame Gen", "FSR-FG Inputs", nullptr, RenderFrameGenerationRuntimeSettings },
-        { "fg_sl_inputs", "Frame Gen", "Streamline FG Inputs", nullptr, RenderFrameGenerationRuntimeSettings },
 
         { "framerate", "Latency", "Framerate", [](RenderMenuContext& c) { RenderCard(c, RenderFramerateSettings); } },
         { "low_latency", "Latency", "Low Latency", [](RenderMenuContext& c) { RenderCard(c, RenderLowLatencySettings); } },
@@ -10261,17 +10444,14 @@ void MenuCommon::RenderMainMenuTabs(RenderMenuContext& ctx)
         ImGui::SameLine(0.0f, 8.0f * menuResScale);
         auto fg = state.CurrentFG();
 
-        // Nvngx replacements don't use currentFG, have to use the DLSSG state detected from the game
+        // Nvngx replacements don't use currentFG, have to use the DLSSG state detected from the game.
+        // Flip Meter calls the replacement itself and counts its own frames
         const FGNvngxReplacement activeNvngxFg = state.activeFgNvngx;
 
-        if (activeNvngxFg != FGNvngxReplacement::None)
+        if (activeNvngxFg != FGNvngxReplacement::None && state.activeFgOutput != FGOutput::FlipMeter)
         {
-            const char* nvngxName = activeNvngxFg == FGNvngxReplacement::Nukems   ? "Nukems"
-                                    : activeNvngxFg == FGNvngxReplacement::Arturs ? "Enabler"
-                                    : activeNvngxFg == FGNvngxReplacement::FFX    ? "FFX"
-                                    : activeNvngxFg == FGNvngxReplacement::Custom ? state.activeFgNvngxCustom.c_str()
-                                                                                  : "Combo";
-            const int detectedCount = state.dlssgDetectedInterpolationCount;
+            const char* nvngxName = NvngxFgName(state);
+            const int detectedCount = state.DlssgDetectedInterpolationCount();
 
             if (detectedCount <= 0)
             {
@@ -10285,17 +10465,13 @@ void MenuCommon::RenderMainMenuTabs(RenderMenuContext& ctx)
             }
         }
 
-        else if (fg != nullptr && fg->IsActive() && !fg->IsPaused())
+        else if (fg != nullptr && fg->IsGenerating())
         {
-            const UINT multiplier = fg->GetInterpolatedFrameCount() + 1;
-
-            // XeFG already has multiplier in name when MFG detected
-            std::string fgName = fg->Name();
-            const std::string multiplierSuffix = StrFmt(" %ux", multiplier);
-            if (fgName.ends_with(multiplierSuffix))
-                fgName.erase(fgName.size() - multiplierSuffix.size());
-
-            ImGui::TextColored(StatusOk(), "%s %ux", fgName.c_str(), multiplier);
+            // Reprojection as the output generates no frames
+            if (state.activeFgOutput == FGOutput::Reprojection)
+                ImGui::TextColored(StatusOk(), "%s", fg->Name());
+            else
+                ImGui::TextColored(StatusOk(), "%s %ux", fg->Name(), fg->GetInterpolatedFrameCount() + 1);
         }
         else
             ImGui::TextDisabled("Off");
